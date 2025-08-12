@@ -3,6 +3,9 @@
  * Para receber dados do navegador via Web Serial API
  */
 
+// Incluir biblioteca NeoPixel
+#include <Adafruit_NeoPixel.h>
+
 // PINAGEM (ajuste se necessário)
 #define PIN_LED      6          // pino da fita WS2812/WS2813
 #define MAX_PIXELS   300        // capacidade máxima suportada pelo objeto NeoPixel
