@@ -96,6 +96,13 @@ void processMessage(String message) {
   Serial.print(message);
   Serial.println("'");
   
+  // DEBUG: Verificar se é JSON válido
+  if (message.startsWith("{") && message.endsWith("}")) {
+    Serial.println("✓ Mensagem parece ser JSON válido");
+  } else {
+    Serial.println("✗ Mensagem não parece ser JSON válido");
+  }
+  
   // Comandos de teste via Serial Monitor
   if (message.equalsIgnoreCase("demo")) {
     Serial.println("Comando DEMO detectado");
@@ -137,20 +144,29 @@ void processMessage(String message) {
     Serial.println("Comando TESTE detectado");
     testAllLEDs();
   } else if (message.indexOf("\"type\":\"config\"") >= 0) {
-    Serial.println("Comando CONFIG detectado");
+    Serial.println("✓ Comando CONFIG detectado");
+    Serial.println("Chamando handleConfig...");
     handleConfig(message);
+    Serial.println("✓ handleConfig concluído");
   } else if (message.indexOf("\"type\":\"state\"") >= 0) {
-    Serial.println("Comando STATE detectado");
+    Serial.println("✓ Comando STATE detectado");
+    Serial.println("Chamando handleState...");
     handleState(message);
+    Serial.println("Chamando renderFrame...");
     renderFrame();
+    Serial.println("✓ renderFrame concluído");
   } else if (message.indexOf("\"type\":\"effect\"") >= 0) {
-    Serial.println("Comando EFFECT detectado");
+    Serial.println("✓ Comando EFFECT detectado");
+    Serial.println("Chamando handleEffect...");
     handleEffect(message);
+    Serial.println("✓ handleEffect concluído");
   } else if (message.indexOf("\"type\":\"ping\"") >= 0) {
-    Serial.println("Comando PING detectado");
+    Serial.println("✓ Comando PING detectado");
+    Serial.println("Chamando handlePing...");
     handlePing(message);
+    Serial.println("✓ handlePing concluído");
   } else {
-    Serial.print("Comando não reconhecido: '");
+    Serial.print("✗ Comando não reconhecido: '");
     Serial.print(message);
     Serial.println("'");
     Serial.println("Digite 'ajuda' para ver comandos disponíveis");
@@ -357,17 +373,26 @@ void testAllLEDs() {
 
 void handleConfig(String message) {
   Serial.println("Config recebida via browser");
+  Serial.println("Iniciando animação visual...");
+  
   // PADRÃO VISUAL: PISCAR VERDE 2x (config recebida)
   for (int flash = 0; flash < 2; flash++) {
+    Serial.print("Flash "); Serial.print(flash + 1); Serial.println("/2");
+    
     for (int i = 0; i < NUM_LEDS; i++) {
       strip.setPixelColor(i, strip.Color(0, 255, 0));
     }
     strip.show();
+    Serial.println("✓ LEDs verdes acesos");
     delay(150);
+    
     strip.clear();
     strip.show();
+    Serial.println("✓ LEDs limpos");
     delay(150);
   }
+  
+  Serial.println("✓ Animação de config concluída!");
 }
 
 void handleState(String message) {
@@ -442,30 +467,48 @@ void handleState(String message) {
 
 void handleEffect(String message) {
   Serial.println("Effect recebido via browser");
+  Serial.println("Iniciando flash branco...");
+  
   // PADRÃO VISUAL: FLASH BRANCO RÁPIDO (effect recebido)
   for (int i = 0; i < NUM_LEDS; i++) {
     strip.setPixelColor(i, strip.Color(255, 255, 255));
   }
   strip.show();
+  Serial.println("✓ Todos os LEDs brancos acesos");
   delay(80);
+  
   strip.clear();
   strip.show();
+  Serial.println("✓ LEDs limpos");
   delay(80);
+  
   strip.show();
+  Serial.println("✓ LEDs brancos novamente");
   delay(80);
+  
   strip.clear();
   strip.show();
+  Serial.println("✓ LEDs limpos finais");
+  Serial.println("✓ Flash branco concluído!");
 }
 
 void handlePing(String message) {
   Serial.println("Ping recebido via browser");
+  Serial.println("Iniciando animação de ping...");
+  
   // PADRÃO VISUAL: PISCAR AZUL NO CENTRO (ping recebido)
   int center = NUM_LEDS / 2;
+  Serial.print("LED central: "); Serial.println(center);
+  
   strip.setPixelColor(center, strip.Color(0, 0, 255));
   strip.show();
+  Serial.println("✓ LED azul aceso no centro");
   delay(200);
+  
   strip.setPixelColor(center, strip.Color(0, 0, 0));
   strip.show();
+  Serial.println("✓ LED central apagado");
+  Serial.println("✓ Animação de ping concluída!");
 }
 
 void renderFrame() {
