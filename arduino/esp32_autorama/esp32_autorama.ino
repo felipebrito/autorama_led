@@ -13,6 +13,8 @@
 
 // CONFIGURAÇÕES
 #define PIN_LED      2          // GPIO 2 para fita LED
+#define PIN_BTN1     4          // GPIO 4 para botão Jogador 1
+#define PIN_BTN2     5          // GPIO 5 para botão Jogador 2
 #define NUM_LEDS     20         // Quantidade de LEDs
 #define WIFI_SSID    "Autorama_LED"  // Nome da rede WiFi
 #define WIFI_PASS    "12345678"      // Senha da rede WiFi
@@ -26,8 +28,26 @@ WebSocketsServer webSocket = WebSocketsServer(WS_PORT);
 
 // ESTADO DO JOGO
 float dist1 = 0.0f, dist2 = 0.0f;
+float vel1 = 0.0f, vel2 = 0.0f;
+int loop1 = 0, loop2 = 0;
+int loopMax = 5;
+int maxLed = 100;
 bool gameRunning = false;
 bool testMode = false;
+bool btn1Pressed = false, btn2Pressed = false;
+bool btn1LastState = false, btn2LastState = false;
+unsigned long lastBtn1Press = 0, lastBtn2Press = 0;
+
+// CONFIGURAÇÕES FÍSICAS
+float acel = 0.2f;      // Aceleração
+float kf = 0.015f;      // Atrito
+float kg = 0.003f;      // Gravidade
+int tail = 3;           // Rastro visual
+
+// TIMING
+unsigned long lapStart1 = 0, lapStart2 = 0;
+unsigned long bestLap1 = 0, bestLap2 = 0;
+unsigned long lastLap1 = 0, lastLap2 = 0;
 
 // BUFFER SERIAL
 String inputString = "";
@@ -44,6 +64,11 @@ void setup() {
   strip.begin();
   strip.show();
   Serial.println("✓ LEDs inicializados");
+  
+  // CONFIGURAR BOTÕES
+  pinMode(PIN_BTN1, INPUT_PULLUP);
+  pinMode(PIN_BTN2, INPUT_PULLUP);
+  Serial.println("✓ Botões configurados");
   
   // TESTE VISUAL INICIAL
   testLEDs();
@@ -97,6 +122,14 @@ void loop() {
     } else {
       Serial.printf("Dispositivos conectados: %d\n", WiFi.softAPgetStationNum());
     }
+  }
+  
+  // LER BOTÕES FÍSICOS
+  readButtons();
+  
+  // ATUALIZAR JOGO
+  if (gameRunning) {
+    updateGame();
   }
 }
 
@@ -179,9 +212,12 @@ void processMessage(String message) {
   } else if (message.equalsIgnoreCase("jogador2")) {
     Serial.println("✓ Comando JOGADOR2 detectado");
     testJogador2();
-  } else if (message.equalsIgnoreCase("simular")) {
-    Serial.println("✓ Comando SIMULAR detectado");
-    startSimulation();
+  } else if (message.equalsIgnoreCase("start")) {
+    Serial.println("✓ Comando START detectado");
+    startGame();
+  } else if (message.equalsIgnoreCase("stop")) {
+    Serial.println("✓ Comando STOP detectado");
+    stopGame();
   } else if (message.equalsIgnoreCase("limpar")) {
     Serial.println("✓ Comando LIMPAR detectado");
     strip.clear();
@@ -356,25 +392,43 @@ void testJogador2() {
   Serial.println("✓ Teste Jogador 2 concluído");
 }
 
-void startSimulation() {
-  Serial.println("Iniciando simulacao...");
-  testMode = true;
+void startGame() {
+  Serial.println("Iniciando jogo...");
+  gameRunning = true;
+  dist1 = 0.0f;
+  dist2 = 0.0f;
+  vel1 = 0.0f;
+  vel2 = 0.0f;
   
-  // Simular dados do jogo
-  for (int step = 0; step < 20; step++) {
-    float d1 = step * 1.5;
-    float d2 = step * 1.2;
-    
-    // Enviar via WebSocket
-    String stateMsg = "{\"type\":\"state\",\"dist1\":" + String(d1) + ",\"dist2\":" + String(d2) + ",\"running\":1}";
-    webSocket.broadcastTXT(stateMsg);
-    
-    Serial.printf("Step %d: d1=%.1f, d2=%.1f\n", step, d1, d2);
-    delay(300);
+  // Countdown visual
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < NUM_LEDS; j++) {
+      strip.setPixelColor(j, strip.Color(255, 255, 0)); // Amarelo
+    }
+    strip.show();
+    delay(500);
+    strip.clear();
+    strip.show();
+    delay(500);
   }
   
-  testMode = false;
-  Serial.println("✓ Simulação concluída");
+  Serial.println("✓ Jogo iniciado!");
+}
+
+void stopGame() {
+  Serial.println("Parando jogo...");
+  gameRunning = false;
+  
+  // Efeito de parada
+  for (int i = 0; i < NUM_LEDS; i++) {
+    strip.setPixelColor(i, strip.Color(255, 0, 0)); // Vermelho
+  }
+  strip.show();
+  delay(1000);
+  strip.clear();
+  strip.show();
+  
+  Serial.println("✓ Jogo parado!");
 }
 
 void runDemo() {
@@ -423,10 +477,100 @@ void showHelp() {
   Serial.println("demo      - Animacao demo");
   Serial.println("jogador1  - Testa carro vermelho");
   Serial.println("jogador2  - Testa carro verde");
-  Serial.println("simular   - Simula dados do jogo");
+  Serial.println("start     - Inicia o jogo");
+  Serial.println("stop      - Para o jogo");
   Serial.println("limpar    - Limpa todos os LEDs");
   Serial.println("ajuda     - Mostra esta ajuda");
   Serial.println("========================\n");
+}
+
+// ===== FUNÇÕES DO JOGO =====
+void readButtons() {
+  // Ler estado atual dos botões
+  bool btn1Current = !digitalRead(PIN_BTN1); // Invertido por causa do PULLUP
+  bool btn2Current = !digitalRead(PIN_BTN2);
+  
+  // Detectar pressionamento (edge detection)
+  if (btn1Current && !btn1LastState && millis() - lastBtn1Press > 200) {
+    btn1Pressed = true;
+    lastBtn1Press = millis();
+    Serial.println("Botão Jogador 1 pressionado!");
+  }
+  
+  if (btn2Current && !btn2LastState && millis() - lastBtn2Press > 200) {
+    btn2Pressed = true;
+    lastBtn2Press = millis();
+    Serial.println("Botão Jogador 2 pressionado!");
+  }
+  
+  // Atualizar estado anterior
+  btn1LastState = btn1Current;
+  btn2LastState = btn2Current;
+}
+
+void updateGame() {
+  static unsigned long lastUpdate = 0;
+  if (millis() - lastUpdate < 50) return; // 20 FPS
+  lastUpdate = millis();
+  
+  // Processar botões pressionados
+  if (btn1Pressed) {
+    vel1 += 0.5f; // Acelerar Jogador 1
+    btn1Pressed = false;
+  }
+  
+  if (btn2Pressed) {
+    vel2 += 0.5f; // Acelerar Jogador 2
+    btn2Pressed = false;
+  }
+  
+  // Aplicar física (velocidade e distância)
+  dist1 += vel1;
+  dist2 += vel2;
+  
+  // Aplicar atrito
+  vel1 *= 0.95f;
+  vel2 *= 0.95f;
+  
+  // Limitar distância
+  if (dist1 > 100.0f) dist1 = 100.0f;
+  if (dist2 > 100.0f) dist2 = 100.0f;
+  
+  // Verificar vitória
+  if (dist1 >= 100.0f || dist2 >= 100.0f) {
+    gameRunning = false;
+    if (dist1 >= 100.0f) {
+      Serial.println("Jogador 1 venceu!");
+      victoryEffect(1);
+    } else {
+      Serial.println("Jogador 2 venceu!");
+      victoryEffect(2);
+    }
+    return;
+  }
+  
+  // Renderizar estado atual
+  renderGameState();
+  
+  // Enviar estado via WebSocket
+  String stateMsg = "{\"type\":\"state\",\"dist1\":" + String(dist1) + ",\"dist2\":" + String(dist2) + ",\"running\":1}";
+  webSocket.broadcastTXT(stateMsg);
+}
+
+void victoryEffect(int player) {
+  uint32_t color = (player == 1) ? strip.Color(255, 0, 0) : strip.Color(0, 255, 0);
+  
+  // Piscar LEDs da cor do vencedor
+  for (int i = 0; i < 5; i++) {
+    for (int j = 0; j < NUM_LEDS; j++) {
+      strip.setPixelColor(j, color);
+    }
+    strip.show();
+    delay(200);
+    strip.clear();
+    strip.show();
+    delay(200);
+  }
 }
 
 // ===== WEB SERVER HANDLERS =====
@@ -486,7 +630,8 @@ String getMainPage() {
   html += "<button onclick=\"sendCommand('demo')\">Demo</button>";
   html += "<button onclick=\"sendCommand('jogador1')\">Jogador 1</button>";
   html += "<button onclick=\"sendCommand('jogador2')\">Jogador 2</button>";
-  html += "<button onclick=\"sendCommand('simular')\">Simular</button>";
+  html += "<button onclick=\"sendCommand('start')\">Start</button>";
+  html += "<button onclick=\"sendCommand('stop')\">Stop</button>";
   html += "<button onclick=\"sendCommand('limpar')\">Limpar</button>";
   html += "</div>";
   html += "<h3>Estado do Jogo</h3>";
