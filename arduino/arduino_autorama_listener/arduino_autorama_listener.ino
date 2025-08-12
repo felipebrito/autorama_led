@@ -1,4 +1,7 @@
-#include <Adafruit_NeoPixel.h>
+/*
+ * Arduino Autorama Listener - Corrigido
+ * Para receber dados do navegador via Web Serial API
+ */
 
 // PINAGEM (ajuste se necessário)
 #define PIN_LED      6          // pino da fita WS2812/WS2813
@@ -19,7 +22,7 @@ uint32_t colorP2   = strip.Color(0, 255, 0);   // carro 2 (verde)
 uint32_t colorBG   = strip.Color(0, 0, 0);     // fundo
 
 // Recepção serial (NDJSON: 1 JSON por linha)
-static const uint16_t RX_BUF = 256;
+static const uint16_t RX_BUF = 512;  // Aumentado para mensagens maiores
 char lineBuf[RX_BUF];
 uint16_t lineLen = 0;
 
@@ -42,14 +45,17 @@ bool parseNumber(const char* src, const char* key, float& out) {
   out = strtod(k, &endptr);
   return endptr != k;
 }
+
 bool parseUInt16(const char* src, const char* key, uint16_t& out) {
   float tmp = 0;
   if (!parseNumber(src, key, tmp)) return false;
   out = (uint16_t)(tmp + 0.5f);
   return true;
 }
+
+// Função mais robusta para detectar tipo de mensagem
 bool hasType(const char* src, const char* typeName) {
-  char needle[32];
+  char needle[64];
   snprintf(needle, sizeof(needle), "\"type\":\"%s\"", typeName);
   return strstr(src, needle) != nullptr;
 }
@@ -57,7 +63,9 @@ bool hasType(const char* src, const char* typeName) {
 void applyConfigFromJson(const char* json) {
   uint16_t v;
   if (parseUInt16(json, "\"maxLed\"", v)) {
-    numPixels = clampT<uint16_t>(v, 1, MAX_PIXELS);
+    // Nunca ultrapassar a quantidade FÍSICA de LEDs conectados
+    uint16_t limit = (PHYS_PIXELS < MAX_PIXELS) ? PHYS_PIXELS : MAX_PIXELS;
+    numPixels = clampT<uint16_t>(v, 1, limit);
     Serial.print("{\"debug\":\"maxLed setado para:\"");
     Serial.print(numPixels);
     Serial.println("\"}");
@@ -158,7 +166,8 @@ void setup() {
   strip.begin();
   strip.show();
   selfTest();
-  Serial.println("{\"arduino\":\"ready\"}");
+  Serial.println("{\"arduino\":\"ready\",\"leds\":20}");
+  Serial.println("{\"status\":\"Arduino iniciado e aguardando comandos\"}");
 }
 
 void loop() {
