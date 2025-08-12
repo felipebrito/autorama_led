@@ -18,7 +18,7 @@
 #define PIN_LED      2          // GPIO 2 para fita LED
 #define PIN_BTN1     4          // GPIO 4 para botão Jogador 1
 #define PIN_BTN2     5          // GPIO 5 para botão Jogador 2
-#define NUM_LEDS     20         // Quantidade de LEDs
+#define NUM_LEDS     50         // Quantidade de LEDs (aumentado para voltas mais longas)
 #define WIFI_SSID    "Autorama_LED"  // Nome da rede WiFi
 #define WIFI_PASS    "12345678"      // Senha da rede WiFi
 #define WEB_PORT     80
@@ -34,7 +34,7 @@ float dist1 = 0.0f, dist2 = 0.0f;
 float vel1 = 0.0f, vel2 = 0.0f;
 int loop1 = 0, loop2 = 0;
 int loopMax = 5;
-int maxLed = 100;
+int maxLed = 50;  // Consistente com NUM_LEDS
 bool gameRunning = false;
 bool testMode = false;
 bool flag_sw1 = true, flag_sw2 = true; // Edge detection como no original
@@ -46,9 +46,9 @@ unsigned long lastBtn1Debounce = 0, lastBtn2Debounce = 0;
 unsigned long DEBOUNCE_DELAY = 150; // 150ms de debounce (ajustável)
 
 // CONFIGURAÇÕES FÍSICAS
-float acel = 0.2f;      // Aceleração
-float kf = 0.015f;      // Atrito
-float kg = 0.003f;      // Gravidade
+float acel = 0.05f;     // Aceleração (reduzida de 0.2 para 0.05)
+float kf = 0.02f;       // Atrito (aumentado para desacelerar mais)
+float kg = 0.005f;      // Gravidade (aumentada para desacelerar mais)
 int tail = 3;           // Rastro visual
 
 // TIMING
@@ -301,6 +301,15 @@ void processMessage(String message) {
       Serial.printf("✓ Debounce ajustado para %d ms\n", DEBOUNCE_DELAY);
     } else {
       Serial.printf("Debounce atual: %lu ms\n", DEBOUNCE_DELAY);
+    }
+  } else if (message.startsWith("acel")) {
+    // Comando: acel 0.1 (ajusta aceleração)
+    float newAcel = message.substring(5).toFloat();
+    if (newAcel > 0.01f && newAcel < 1.0f) {
+      acel = newAcel;
+      Serial.printf("✓ Aceleração ajustada para %.3f\n", acel);
+    } else {
+      Serial.printf("Aceleração atual: %.3f\n", acel);
     }
   } else if (message.startsWith("{") && message.endsWith("}")) {
     // COMANDOS JSON
@@ -620,6 +629,7 @@ void showHelp() {
   Serial.println("btn1      - Acelerar Jogador 1 (browser)");
   Serial.println("btn2      - Acelerar Jogador 2 (browser)");
   Serial.println("debounce 200 - Ajusta debounce (ms)");
+  Serial.println("acel 0.1  - Ajusta aceleração");
   Serial.println("ajuda     - Mostra esta ajuda");
   Serial.println("========================\n");
 }
@@ -800,6 +810,15 @@ String getMainPage() {
   
   html += "<div style=\"background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;\">";
   html += "<strong>💡 Dica:</strong> Use estes botões para testar se o problema é nos botões físicos ou no código dos LEDs.";
+  html += "</div>";
+  
+  html += "<h3>Ajustes em Tempo Real</h3>";
+  html += "<div style=\"margin: 20px 0;\">";
+  html += "<button onclick=\"sendCommand('acel 0.02')\" style=\"background: #ff8800; margin: 5px;\">Aceleração Baixa (0.02)</button>";
+  html += "<button onclick=\"sendCommand('acel 0.05')\" style=\"background: #ffaa00; margin: 5px;\">Aceleração Média (0.05)</button>";
+  html += "<button onclick=\"sendCommand('acel 0.1')\" style=\"background: #ffcc00; margin: 5px;\">Aceleração Alta (0.1)</button>";
+  html += "<button onclick=\"sendCommand('debounce 100')\" style=\"background: #00aaff; margin: 5px;\">Debounce Rápido (100ms)</button>";
+  html += "<button onclick=\"sendCommand('debounce 200')\" style=\"background: #0088ff; margin: 5px;\">Debounce Lento (200ms)</button>";
   html += "</div>";
   html += "<h3>Estado do Jogo</h3>";
   html += "<div>";
