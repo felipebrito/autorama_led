@@ -1,7 +1,7 @@
 /*
- * Arduino Autorama - Versão Ultra-Simples com Testes Visuais
- * Baseado no led_test_simple.ino que FUNCIONA
- * Padrões visuais únicos para cada comando - não precisa de Serial Monitor
+ * Arduino Autorama - Versão com Testes via Serial Monitor
+ * Comandos de teste: demo, jogador1, jogador2, simular, ajuda
+ * Animações presetadas para testar cada componente
  */
 
 #include <Adafruit_NeoPixel.h>
@@ -25,6 +25,10 @@ bool stringComplete = false;
 unsigned long lastTestTime = 0;
 int testCounter = 0;
 
+// Modo de teste
+bool testMode = false;
+unsigned long testStartTime = 0;
+
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -32,20 +36,11 @@ void setup() {
   strip.begin();
   strip.show(); // Limpar LEDs
   
-  // Teste visual de inicialização - SEQUÊNCIA RGB
+  // Teste visual de inicialização
   testLEDs();
   
-  // Sinal de "pronto" - PISCAR VERDE 3x
-  for (int flash = 0; flash < 3; flash++) {
-    for (int i = 0; i < NUM_LEDS; i++) {
-      strip.setPixelColor(i, strip.Color(0, 255, 0));
-    }
-    strip.show();
-    delay(200);
-    strip.clear();
-    strip.show();
-    delay(200);
-  }
+  // Mostrar comandos disponíveis
+  showHelp();
 }
 
 void loop() {
@@ -67,6 +62,11 @@ void loop() {
     stringComplete = false;
   }
   
+  // Modo de teste ativo
+  if (testMode) {
+    runTestMode();
+  }
+  
   // Countdown visual quando o jogo iniciar
   if (gameJustStarted && (millis() - gameStartTime < 3000)) {
     runCountdown();
@@ -82,15 +82,35 @@ void loop() {
   
   // Demo simples se não receber mensagens
   static unsigned long lastDemo = 0;
-  if (millis() - lastDemo > 2000) {
+  if (millis() - lastDemo > 2000 && !testMode) {
     runDemo();
     lastDemo = millis();
   }
 }
 
 void processMessage(String message) {
-  // Verificar tipo de mensagem
-  if (message.indexOf("\"type\":\"config\"") >= 0) {
+  message.trim(); // Remover espaços
+  
+  // Comandos de teste via Serial Monitor
+  if (message.equalsIgnoreCase("demo")) {
+    runDemoAnimation();
+  } else if (message.equalsIgnoreCase("jogador1")) {
+    testJogador1();
+  } else if (message.equalsIgnoreCase("jogador2")) {
+    testJogador2();
+  } else if (message.equalsIgnoreCase("simular")) {
+    startSimulation();
+  } else if (message.equalsIgnoreCase("parar")) {
+    stopTestMode();
+  } else if (message.equalsIgnoreCase("ajuda") || message.equalsIgnoreCase("help")) {
+    showHelp();
+  } else if (message.equalsIgnoreCase("limpar")) {
+    strip.clear();
+    strip.show();
+    Serial.println("LEDs limpos");
+  } else if (message.equalsIgnoreCase("teste")) {
+    testAllLEDs();
+  } else if (message.indexOf("\"type\":\"config\"") >= 0) {
     handleConfig(message);
   } else if (message.indexOf("\"type\":\"state\"") >= 0) {
     handleState(message);
@@ -99,10 +119,191 @@ void processMessage(String message) {
     handleEffect();
   } else if (message.indexOf("\"type\":\"ping\"") >= 0) {
     handlePing();
+  } else {
+    Serial.print("Comando não reconhecido: ");
+    Serial.println(message);
+    Serial.println("Digite 'ajuda' para ver comandos disponíveis");
   }
 }
 
+void showHelp() {
+  Serial.println("\n=== COMANDOS DE TESTE ===");
+  Serial.println("demo      - Animação demo completa");
+  Serial.println("jogador1  - Testa carro vermelho");
+  Serial.println("jogador2  - Testa carro verde");
+  Serial.println("simular   - Simula dados do jogo");
+  Serial.println("parar     - Para modo de teste");
+  Serial.println("limpar    - Limpa todos os LEDs");
+  Serial.println("teste     - Testa todos os LEDs");
+  Serial.println("ajuda     - Mostra esta ajuda");
+  Serial.println("========================\n");
+}
+
+void runDemoAnimation() {
+  Serial.println("Executando animação DEMO...");
+  
+  // Sequência de cores
+  uint32_t colors[] = {
+    strip.Color(255, 0, 0),    // Vermelho
+    strip.Color(0, 255, 0),    // Verde
+    strip.Color(0, 0, 255),    // Azul
+    strip.Color(255, 255, 0),  // Amarelo
+    strip.Color(255, 0, 255),  // Magenta
+    strip.Color(0, 255, 255)   // Ciano
+  };
+  
+  for (int color = 0; color < 6; color++) {
+    for (int i = 0; i < NUM_LEDS; i++) {
+      strip.setPixelColor(i, colors[color]);
+      strip.show();
+      delay(50);
+    }
+    delay(200);
+  }
+  
+  strip.clear();
+  strip.show();
+  Serial.println("Demo concluído!");
+}
+
+void testJogador1() {
+  Serial.println("Testando JOGADOR 1 (vermelho)...");
+  
+  // Carro vermelho se move pela fita
+  for (int pos = 0; pos < NUM_LEDS; pos++) {
+    strip.clear();
+    strip.setPixelColor(pos, strip.Color(255, 0, 0));
+    
+    // Rastro
+    for (int i = 1; i <= 3; i++) {
+      int rastro = pos - i;
+      if (rastro >= 0) {
+        strip.setPixelColor(rastro, strip.Color(50, 0, 0));
+      }
+    }
+    
+    strip.show();
+    delay(100);
+  }
+  
+  strip.clear();
+  strip.show();
+  Serial.println("Teste Jogador 1 concluído!");
+}
+
+void testJogador2() {
+  Serial.println("Testando JOGADOR 2 (verde)...");
+  
+  // Carro verde se move pela fita
+  for (int pos = 0; pos < NUM_LEDS; pos++) {
+    strip.clear();
+    strip.setPixelColor(pos, strip.Color(0, 255, 0));
+    
+    // Rastro
+    for (int i = 1; i <= 3; i++) {
+      int rastro = pos - i;
+      if (rastro >= 0) {
+        strip.setPixelColor(rastro, strip.Color(0, 50, 0));
+      }
+    }
+    
+    strip.show();
+    delay(100);
+  }
+  
+  strip.clear();
+  strip.show();
+  Serial.println("Teste Jogador 2 concluído!");
+}
+
+void startSimulation() {
+  Serial.println("Iniciando SIMULAÇÃO de dados do jogo...");
+  Serial.println("Enviando dados como se fosse o browser...");
+  
+  testMode = true;
+  testStartTime = millis();
+  
+  // Simular dados de configuração
+  Serial.println("{\"type\":\"config\",\"maxLed\":20,\"loopMax\":5,\"acel\":0.2,\"kf\":0.015,\"kg\":0.003,\"tail\":3}");
+  
+  // Simular início do jogo
+  Serial.println("{\"type\":\"state\",\"dist1\":0,\"dist2\":0,\"speed1\":0,\"speed2\":0,\"loop1\":0,\"loop2\":0,\"leader\":0,\"running\":1}");
+  
+  // Simular movimento dos carros
+  for (int step = 0; step < 20; step++) {
+    float d1 = step * 1.5;
+    float d2 = step * 1.2;
+    
+    String stateMsg = "{\"type\":\"state\",\"dist1\":" + String(d1) + ",\"dist2\":" + String(d2) + ",\"speed1\":1.5,\"speed2\":1.2,\"loop1\":" + (step/5) + ",\"loop2\":" + (step/6) + ",\"leader\":" + (d1 > d2 ? 1 : 2) + ",\"running\":1}";
+    Serial.println(stateMsg);
+    
+    delay(200);
+  }
+  
+  // Simular fim do jogo
+  Serial.println("{\"type\":\"state\",\"dist1\":30,\"dist2\":24,\"speed1\":0,\"speed2\":0,\"loop1\":1,\"loop2\":0,\"leader\":1,\"running\":0}");
+  
+  Serial.println("Simulação concluída!");
+  testMode = false;
+}
+
+void runTestMode() {
+  // Durante o modo de teste, não executar outras animações
+  static unsigned long lastUpdate = 0;
+  if (millis() - lastUpdate > 100) {
+    lastUpdate = millis();
+    
+    // Mostrar indicador visual de que está em modo de teste
+    strip.setPixelColor(0, strip.Color(255, 255, 0)); // Amarelo no primeiro LED
+    strip.show();
+  }
+}
+
+void stopTestMode() {
+  Serial.println("Parando modo de teste...");
+  testMode = false;
+  strip.clear();
+  strip.show();
+  Serial.println("Modo de teste parado");
+}
+
+void testAllLEDs() {
+  Serial.println("Testando todos os LEDs...");
+  
+  // Teste individual de cada LED
+  for (int i = 0; i < NUM_LEDS; i++) {
+    strip.clear();
+    strip.setPixelColor(i, strip.Color(255, 255, 255));
+    strip.show();
+    delay(100);
+  }
+  
+  // Teste de cores
+  for (int i = 0; i < NUM_LEDS; i++) {
+    strip.setPixelColor(i, strip.Color(255, 0, 0));
+  }
+  strip.show();
+  delay(500);
+  
+  for (int i = 0; i < NUM_LEDS; i++) {
+    strip.setPixelColor(i, strip.Color(0, 255, 0));
+  }
+  strip.show();
+  delay(500);
+  
+  for (int i = 0; i < NUM_LEDS; i++) {
+    strip.setPixelColor(i, strip.Color(0, 0, 255));
+  }
+  strip.show();
+  delay(500);
+  
+  strip.clear();
+  strip.show();
+  Serial.println("Teste de LEDs concluído!");
+}
+
 void handleConfig(String message) {
+  Serial.println("Config recebida via browser");
   // PADRÃO VISUAL: PISCAR VERDE 2x (config recebida)
   for (int flash = 0; flash < 2; flash++) {
     for (int i = 0; i < NUM_LEDS; i++) {
@@ -117,6 +318,8 @@ void handleConfig(String message) {
 }
 
 void handleState(String message) {
+  Serial.println("State recebido via browser");
+  
   // Extrair dist1
   int start = message.indexOf("\"dist1\":");
   if (start >= 0) {
@@ -164,6 +367,7 @@ void handleState(String message) {
     if (gameRunning && !wasRunning) {
       gameJustStarted = true;
       gameStartTime = millis();
+      Serial.println("JOGO INICIADO - iniciando countdown visual!");
       // PADRÃO VISUAL: PISCAR BRANCO 3x (jogo iniciado)
       for (int flash = 0; flash < 3; flash++) {
         for (int i = 0; i < NUM_LEDS; i++) {
@@ -177,9 +381,14 @@ void handleState(String message) {
       }
     }
   }
+  
+  Serial.print("dist1: "); Serial.print(dist1);
+  Serial.print(", dist2: "); Serial.print(dist2);
+  Serial.print(", running: "); Serial.println(gameRunning ? "true" : "false");
 }
 
 void handleEffect() {
+  Serial.println("Effect recebido via browser");
   // PADRÃO VISUAL: FLASH BRANCO RÁPIDO (effect recebido)
   for (int i = 0; i < NUM_LEDS; i++) {
     strip.setPixelColor(i, strip.Color(255, 255, 255));
@@ -196,6 +405,7 @@ void handleEffect() {
 }
 
 void handlePing() {
+  Serial.println("Ping recebido via browser");
   // PADRÃO VISUAL: PISCAR AZUL NO CENTRO (ping recebido)
   int center = NUM_LEDS / 2;
   strip.setPixelColor(center, strip.Color(0, 0, 255));
@@ -236,12 +446,15 @@ void runCountdown() {
     switch(countdownStep) {
       case 0: // Vermelho
         color = strip.Color(255, 0, 0);
+        Serial.println("Countdown 3 - VERMELHO");
         break;
       case 1: // Amarelo
         color = strip.Color(255, 255, 0);
+        Serial.println("Countdown 2 - AMARELO");
         break;
       case 2: // Verde
         color = strip.Color(0, 255, 0);
+        Serial.println("Countdown 1 - VERDE");
         break;
     }
     
