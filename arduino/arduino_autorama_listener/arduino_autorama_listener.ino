@@ -240,6 +240,14 @@ void loop() {
           renderFrame();
           haveLiveData = true;
           lastMsgMs = millis();
+          // DEBUG: Log do estado atual
+          Serial.print("{\"debug\":\"Estado atualizado - gameRunning:\"");
+          Serial.print(gameRunning ? "true" : "false");
+          Serial.print(", haveLiveData:\"");
+          Serial.print(haveLiveData ? "true" : "false");
+          Serial.print(", lastMsgMs:\"");
+          Serial.print(lastMsgMs);
+          Serial.println("\"}");
         } else if (hasType(lineBuf, "effect")) {
           Serial.println("{\"debug\":\"Processando effect\"}");
           // Efeito simples: flash branco em todos os LEDs
@@ -272,8 +280,20 @@ void loop() {
     }
   }
 
-  // Demo: se não receber dados por 2s OU se running=false, roda demo
-  if (!haveLiveData || (millis() - lastMsgMs > 2000) || !gameRunning) {
+  // Demo: CORREÇÃO CRÍTICA - só roda demo se não tiver dados vivos E game não estiver rodando
+  if (!haveLiveData || (millis() - lastMsgMs > 2000)) {
+    // Se temos dados vivos E o jogo está rodando, NÃO roda demo
+    if (haveLiveData && gameRunning) {
+      // DEBUG: Log que demo foi bloqueado
+      static unsigned long lastDemoLog = 0;
+      if (millis() - lastDemoLog > 1000) {
+        Serial.println("{\"debug\":\"Demo bloqueado - jogo ativo\"}");
+        lastDemoLog = millis();
+      }
+      return; // Sai sem executar demo
+    }
+    
+    // Demo só roda quando não há dados vivos ou dados antigos
     static unsigned long lastStep = 0;
     static uint16_t demoIdx = 0;
     if (millis() - lastStep > 80) {
