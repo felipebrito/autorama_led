@@ -240,6 +240,24 @@ void loop() {
           renderFrame();
           haveLiveData = true;
           lastMsgMs = millis();
+        } else if (hasType(lineBuf, "effect")) {
+          Serial.println("{\"debug\":\"Processando effect\"}");
+          // Efeito simples: flash branco em todos os LEDs
+          strip.clear();
+          for (uint16_t i = 0; i < numPixels; i++) strip.setPixelColor(i, strip.Color(80, 80, 80));
+          strip.show();
+          delay(120);
+          strip.clear();
+          strip.show();
+        } else if (hasType(lineBuf, "ping")) {
+          // Resposta ao ping + piscar centro
+          Serial.println("{\"pong\":\"ok\"}");
+          int center = numPixels / 2;
+          strip.setPixelColor(center, strip.Color(255, 255, 255));
+          strip.show();
+          delay(80);
+          strip.setPixelColor(center, strip.Color(0, 0, 0));
+          strip.show();
         } else {
           Serial.println("{\"debug\":\"Tipo nao reconhecido\"}");
         }

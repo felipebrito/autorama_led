@@ -52,6 +52,7 @@ class LEDRace {
         this.serialInfo = document.getElementById('serialInfo');
         this.listBtn = document.getElementById('listBtn');
         this.disconnectBtn = document.getElementById('disconnectBtn');
+        this.testEffectBtn = document.getElementById('testEffectBtn');
         
         this.init();
     }
@@ -225,6 +226,20 @@ class LEDRace {
                 this.closeSerial();
                 if (this.serialStatus) this.serialStatus.textContent = 'Desconectado';
                 if (this.serialInfo) this.serialInfo.textContent = 'Conexão encerrada pelo usuário';
+            });
+        }
+
+        if (this.testEffectBtn) {
+            this.testEffectBtn.addEventListener('click', async () => {
+                console.log('[UI] testEffectBtn clicked');
+                // Envia um ping e um efeito de teste
+                await this.sendLine({ type: 'ping' });
+                await this.sendLine({ type: 'effect', name: 'flash' });
+                // Se corrida não estiver ativa, envia um frame de state com running=1 e dist aleatória
+                if (!this.gameRunning) {
+                    const d = Math.floor(Math.random() * this.MAXLED);
+                    await this.sendLine({ type: 'state', dist1: d, dist2: (d + Math.floor(this.MAXLED/2)) % this.MAXLED, speed1: 0, speed2: 0, loop1: 0, loop2: 0, leader: 0, running: 1 });
+                }
             });
         }
 
