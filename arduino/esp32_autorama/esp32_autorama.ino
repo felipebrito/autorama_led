@@ -222,9 +222,9 @@ void processJSON(String json) {
 
 // ===== HANDLERS =====
 void handleConfig(DynamicJsonDocument &doc) {
-  Serial.println("Configuração recebida:");
-  Serial.print("  maxLed: "); Serial.println(doc["maxLed"]);
-  Serial.print("  loopMax: "); Serial.println(doc["loopMax"]);
+  Serial.println("Configuracao recebida:");
+  Serial.print("  maxLed: "); Serial.println(doc["maxLed"].as<int>());
+  Serial.print("  loopMax: "); Serial.println(doc["loopMax"].as<int>());
   
   // Confirmação visual
   for (int i = 0; i < NUM_LEDS; i++) {
@@ -350,7 +350,7 @@ void testJogador2() {
 }
 
 void startSimulation() {
-  Serial.println("Iniciando simulação...");
+  Serial.println("Iniciando simulacao...");
   testMode = true;
   
   // Simular dados do jogo
@@ -412,8 +412,8 @@ void renderGameState() {
 }
 
 void showHelp() {
-  Serial.println("\n=== COMANDOS DISPONÍVEIS ===");
-  Serial.println("demo      - Animação demo");
+  Serial.println("\n=== COMANDOS DISPONIVEIS ===");
+  Serial.println("demo      - Animacao demo");
   Serial.println("jogador1  - Testa carro vermelho");
   Serial.println("jogador2  - Testa carro verde");
   Serial.println("simular   - Simula dados do jogo");
@@ -448,175 +448,133 @@ void handleWebSocketMessage(uint8_t num, uint8_t * payload, size_t length) {
 
 // ===== PÁGINA HTML =====
 String getMainPage() {
-  return R"(
-<!DOCTYPE html>
-<html>
-<head>
-    <title>ESP32 Autorama</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f0f0f0; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
-        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
-        .connected { background: #d4edda; color: #155724; }
-        .disconnected { background: #f8d7da; color: #721c24; }
-        button { background: #007bff; color: white; border: none; padding: 10px 20px; margin: 5px; border-radius: 5px; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        .led-track { display: flex; margin: 20px 0; overflow-x: auto; }
-        .led { width: 20px; height: 20px; border: 1px solid #ccc; margin: 2px; border-radius: 50%; background: #333; }
-        .log { background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; height: 200px; overflow-y: auto; font-family: monospace; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🚗 ESP32 Autorama</h1>
-        
-        <div class="status disconnected" id="status">Desconectado</div>
-        
-        <div>
-            <button onclick="connect()">🔌 Conectar</button>
-            <button onclick="disconnect()">❌ Desconectar</button>
-        </div>
-        
-        <h3>🎮 Controles</h3>
-        <div>
-            <button onclick="sendCommand('demo')">🎬 Demo</button>
-            <button onclick="sendCommand('jogador1')">🔴 Jogador 1</button>
-            <button onclick="sendCommand('jogador2')">🟢 Jogador 2</button>
-            <button onclick="sendCommand('simular')">🎯 Simular</button>
-            <button onclick="sendCommand('limpar')">🧹 Limpar</button>
-        </div>
-        
-        <h3>📊 Estado do Jogo</h3>
-        <div>
-            <label>Jogador 1: <span id="dist1">0.00</span></label><br>
-            <label>Jogador 2: <span id="dist2">0.00</span></label><br>
-            <label>Status: <span id="gameStatus">Parado</span></label>
-        </div>
-        
-        <h3>💡 Pista LED</h3>
-        <div class="led-track" id="ledTrack"></div>
-        
-        <h3>📝 Log</h3>
-        <div class="log" id="log"></div>
-    </div>
-
-    <script>
-        let ws = null;
-        let ledElements = [];
-        
-        // Inicializar LEDs
-        function initLEDs() {
-            const track = document.getElementById('ledTrack');
-            track.innerHTML = '';
-            ledElements = [];
-            
-            for (let i = 0; i < 20; i++) {
-                const led = document.createElement('div');
-                led.className = 'led';
-                led.id = 'led-' + i;
-                track.appendChild(led);
-                ledElements.push(led);
-            }
-        }
-        
-        // Conectar WebSocket
-        function connect() {
-            const ip = window.location.hostname;
-            ws = new WebSocket('ws://' + ip + ':81');
-            
-            ws.onopen = function() {
-                updateStatus('Conectado', true);
-                log('WebSocket conectado');
-            };
-            
-            ws.onmessage = function(event) {
-                const data = JSON.parse(event.data);
-                log('Recebido: ' + JSON.stringify(data));
-                
-                if (data.type === 'state') {
-                    updateGameState(data);
-                }
-            };
-            
-            ws.onclose = function() {
-                updateStatus('Desconectado', false);
-                log('WebSocket desconectado');
-            };
-            
-            ws.onerror = function(error) {
-                log('Erro: ' + error);
-            };
-        }
-        
-        // Desconectar
-        function disconnect() {
-            if (ws) {
-                ws.close();
-                ws = null;
-            }
-        }
-        
-        // Enviar comando
-        function sendCommand(cmd) {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(cmd);
-                log('Enviado: ' + cmd);
-            } else {
-                log('Erro: Não conectado');
-            }
-        }
-        
-        // Atualizar status
-        function updateStatus(text, connected) {
-            const status = document.getElementById('status');
-            status.textContent = text;
-            status.className = 'status ' + (connected ? 'connected' : 'disconnected');
-        }
-        
-        // Atualizar estado do jogo
-        function updateGameState(data) {
-            document.getElementById('dist1').textContent = data.dist1.toFixed(2);
-            document.getElementById('dist2').textContent = data.dist2.toFixed(2);
-            document.getElementById('gameStatus').textContent = data.running ? 'Rodando' : 'Parado';
-            
-            // Atualizar LEDs
-            updateLEDs(data);
-        }
-        
-        // Atualizar LEDs
-        function updateLEDs(data) {
-            // Limpar LEDs
-            ledElements.forEach(led => led.style.background = '#333');
-            
-            // Posicionar jogadores
-            const pos1 = Math.floor((data.dist1 / 100) * 19);
-            const pos2 = Math.floor((data.dist2 / 100) * 19);
-            
-            if (pos1 >= 0 && pos1 < 20) {
-                ledElements[pos1].style.background = '#ff0000'; // Vermelho
-            }
-            if (pos2 >= 0 && pos2 < 20) {
-                ledElements[pos2].style.background = '#00ff00'; // Verde
-            }
-        }
-        
-        // Log
-        function log(message) {
-            const logDiv = document.getElementById('log');
-            const timestamp = new Date().toLocaleTimeString();
-            logDiv.innerHTML += '[' + timestamp + '] ' + message + '<br>';
-            logDiv.scrollTop = logDiv.scrollHeight;
-        }
-        
-        // Inicializar
-        window.onload = function() {
-            initLEDs();
-            log('Página carregada');
-        };
-    </script>
-</body>
-</html>
-  )";
+  String html = "<!DOCTYPE html>";
+  html += "<html><head>";
+  html += "<title>ESP32 Autorama</title>";
+  html += "<meta charset=\"UTF-8\">";
+  html += "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">";
+  html += "<style>";
+  html += "body { font-family: Arial, sans-serif; margin: 20px; background: #f0f0f0; }";
+  html += ".container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }";
+  html += ".status { padding: 10px; margin: 10px 0; border-radius: 5px; }";
+  html += ".connected { background: #d4edda; color: #155724; }";
+  html += ".disconnected { background: #f8d7da; color: #721c24; }";
+  html += "button { background: #007bff; color: white; border: none; padding: 10px 20px; margin: 5px; border-radius: 5px; cursor: pointer; }";
+  html += "button:hover { background: #0056b3; }";
+  html += ".led-track { display: flex; margin: 20px 0; overflow-x: auto; }";
+  html += ".led { width: 20px; height: 20px; border: 1px solid #ccc; margin: 2px; border-radius: 50%; background: #333; }";
+  html += ".log { background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; height: 200px; overflow-y: auto; font-family: monospace; }";
+  html += "</style></head><body>";
+  html += "<div class=\"container\">";
+  html += "<h1>ESP32 Autorama</h1>";
+  html += "<div class=\"status disconnected\" id=\"status\">Desconectado</div>";
+  html += "<div>";
+  html += "<button onclick=\"connect()\">Conectar</button>";
+  html += "<button onclick=\"disconnect()\">Desconectar</button>";
+  html += "</div>";
+  html += "<h3>Controles</h3>";
+  html += "<div>";
+  html += "<button onclick=\"sendCommand('demo')\">Demo</button>";
+  html += "<button onclick=\"sendCommand('jogador1')\">Jogador 1</button>";
+  html += "<button onclick=\"sendCommand('jogador2')\">Jogador 2</button>";
+  html += "<button onclick=\"sendCommand('simular')\">Simular</button>";
+  html += "<button onclick=\"sendCommand('limpar')\">Limpar</button>";
+  html += "</div>";
+  html += "<h3>Estado do Jogo</h3>";
+  html += "<div>";
+  html += "<label>Jogador 1: <span id=\"dist1\">0.00</span></label><br>";
+  html += "<label>Jogador 2: <span id=\"dist2\">0.00</span></label><br>";
+  html += "<label>Status: <span id=\"gameStatus\">Parado</span></label>";
+  html += "</div>";
+  html += "<h3>Pista LED</h3>";
+  html += "<div class=\"led-track\" id=\"ledTrack\"></div>";
+  html += "<h3>Log</h3>";
+  html += "<div class=\"log\" id=\"log\"></div>";
+  html += "</div>";
+  html += "<script>";
+  html += "let ws = null;";
+  html += "let ledElements = [];";
+  html += "function initLEDs() {";
+  html += "  const track = document.getElementById('ledTrack');";
+  html += "  track.innerHTML = '';";
+  html += "  ledElements = [];";
+  html += "  for (let i = 0; i < 20; i++) {";
+  html += "    const led = document.createElement('div');";
+  html += "    led.className = 'led';";
+  html += "    led.id = 'led-' + i;";
+  html += "    track.appendChild(led);";
+  html += "    ledElements.push(led);";
+  html += "  }";
+  html += "}";
+  html += "function connect() {";
+  html += "  const ip = window.location.hostname;";
+  html += "  ws = new WebSocket('ws://' + ip + ':81');";
+  html += "  ws.onopen = function() {";
+  html += "    updateStatus('Conectado', true);";
+  html += "    log('WebSocket conectado');";
+  html += "  };";
+  html += "  ws.onmessage = function(event) {";
+  html += "    const data = JSON.parse(event.data);";
+  html += "    log('Recebido: ' + JSON.stringify(data));";
+  html += "    if (data.type === 'state') {";
+  html += "      updateGameState(data);";
+  html += "    }";
+  html += "  };";
+  html += "  ws.onclose = function() {";
+  html += "    updateStatus('Desconectado', false);";
+  html += "    log('WebSocket desconectado');";
+  html += "  };";
+  html += "  ws.onerror = function(error) {";
+  html += "    log('Erro: ' + error);";
+  html += "  };";
+  html += "}";
+  html += "function disconnect() {";
+  html += "  if (ws) {";
+  html += "    ws.close();";
+  html += "    ws = null;";
+  html += "  }";
+  html += "}";
+  html += "function sendCommand(cmd) {";
+  html += "  if (ws && ws.readyState === WebSocket.OPEN) {";
+  html += "    ws.send(cmd);";
+  html += "    log('Enviado: ' + cmd);";
+  html += "  } else {";
+  html += "    log('Erro: Nao conectado');";
+  html += "  }";
+  html += "}";
+  html += "function updateStatus(text, connected) {";
+  html += "  const status = document.getElementById('status');";
+  html += "  status.textContent = text;";
+  html += "  status.className = 'status ' + (connected ? 'connected' : 'disconnected');";
+  html += "}";
+  html += "function updateGameState(data) {";
+  html += "  document.getElementById('dist1').textContent = data.dist1.toFixed(2);";
+  html += "  document.getElementById('dist2').textContent = data.dist2.toFixed(2);";
+  html += "  document.getElementById('gameStatus').textContent = data.running ? 'Rodando' : 'Parado';";
+  html += "  updateLEDs(data);";
+  html += "}";
+  html += "function updateLEDs(data) {";
+  html += "  ledElements.forEach(led => led.style.background = '#333');";
+  html += "  const pos1 = Math.floor((data.dist1 / 100) * 19);";
+  html += "  const pos2 = Math.floor((data.dist2 / 100) * 19);";
+  html += "  if (pos1 >= 0 && pos1 < 20) {";
+  html += "    ledElements[pos1].style.background = '#ff0000';";
+  html += "  }";
+  html += "  if (pos2 >= 0 && pos2 < 20) {";
+  html += "    ledElements[pos2].style.background = '#00ff00';";
+  html += "  }";
+  html += "}";
+  html += "function log(message) {";
+  html += "  const logDiv = document.getElementById('log');";
+  html += "  const timestamp = new Date().toLocaleTimeString();";
+  html += "  logDiv.innerHTML += '[' + timestamp + '] ' + message + '<br>';";
+  html += "  logDiv.scrollTop = logDiv.scrollHeight;";
+  html += "}";
+  html += "window.onload = function() {";
+  html += "  initLEDs();";
+  html += "  log('Pagina carregada');";
+  html += "};";
+  html += "</script>";
+  html += "</body></html>";
+  return html;
 }
