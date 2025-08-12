@@ -129,31 +129,12 @@ void applyStateFromJson(const char* json) {
   }
 }
 
-void drawCar(uint16_t idx, uint8_t tail, uint32_t color) {
-  // DEBUG: Log dos parâmetros
-  Serial.print("{\"debug\":\"drawCar - idx:\"");
-  Serial.print(idx);
-  Serial.print(", tail:\"");
-  Serial.print(tail);
-  Serial.print(", color:\"");
-  Serial.print(color);
-  Serial.println("\"}");
-  
-  for (uint8_t i = 0; i <= tail; i++) {
-    uint16_t p = (idx + i) % numPixels;
-    strip.setPixelColor(p, color);
-    
-    // DEBUG: Log de cada pixel
-    Serial.print("{\"debug\":\"Pixel \"");
-    Serial.print(p);
-    Serial.print(" setado com cor \"");
-    Serial.print(color);
-    Serial.println("\"}");
-  }
-}
-
 void renderFrame() {
+  // DEBUG: Log antes de limpar
+  Serial.println("{\"debug\":\"renderFrame iniciado\"}");
+  
   strip.clear();
+  
   // índices atuais (alinhados à pista lógica)
   int i1 = ((long)floor(dist1) % numPixels + numPixels) % numPixels;
   int i2 = ((long)floor(dist2) % numPixels + numPixels) % numPixels;
@@ -174,8 +155,21 @@ void renderFrame() {
   // DEBUG: Log antes de desenhar
   Serial.println("{\"debug\":\"Desenhando carros...\"}");
   
-  drawCar((uint16_t)i1, tailLen, colorP1);
-  drawCar((uint16_t)i2, tailLen, colorP2);
+  // Desenhar carro 1 (vermelho) - SIMPLIFICADO
+  strip.setPixelColor(i1, colorP1);
+  // Rastro do carro 1
+  for (uint8_t i = 1; i <= tailLen; i++) {
+    uint16_t p = (i1 + i) % numPixels;
+    strip.setPixelColor(p, strip.Color(100, 0, 0)); // Vermelho mais fraco
+  }
+  
+  // Desenhar carro 2 (verde) - SIMPLIFICADO
+  strip.setPixelColor(i2, colorP2);
+  // Rastro do carro 2
+  for (uint8_t i = 1; i <= tailLen; i++) {
+    uint16_t p = (i2 + i) % numPixels;
+    strip.setPixelColor(p, strip.Color(0, 100, 0)); // Verde mais fraco
+  }
 
   // DEBUG: Log após desenhar
   Serial.println("{\"debug\":\"Carros desenhados, chamando strip.show()\"}");
