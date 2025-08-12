@@ -225,7 +225,8 @@ class LEDRace {
                 speed2: this.speed2,
                 loop1: this.loop1,
                 loop2: this.loop2,
-                leader: this.leader
+                leader: this.leader,
+                running: this.gameRunning
             });
         }, 100);
     }

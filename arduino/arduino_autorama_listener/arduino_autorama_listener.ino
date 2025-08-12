@@ -23,6 +23,7 @@ uint16_t lineLen = 0;
 float dist1 = 0.0f, dist2 = 0.0f;
 unsigned long lastMsgMs = 0;   // última msg válida recebida
 bool haveLiveData = false;     // já recebemos 'state'
+bool gameRunning = false;      // vindo do navegador
 
 template<typename T>
 T clampT(T v, T lo, T hi) { return v < lo ? lo : (v > hi ? hi : v); }
@@ -64,6 +65,17 @@ void applyStateFromJson(const char* json) {
   float v;
   if (parseNumber(json, "\"dist1\"", v)) dist1 = v;
   if (parseNumber(json, "\"dist2\"", v)) dist2 = v;
+  // running opcional
+  if (strstr(json, "\"running\"")) {
+    float r = 0;
+    if (parseNumber(json, "\"running\"", r)) {
+      gameRunning = (r != 0.0f);
+    } else {
+      // se vier como booleano true/false textual, faz fallback simples
+      if (strstr(json, "\"running\":true")) gameRunning = true;
+      if (strstr(json, "\"running\":false")) gameRunning = false;
+    }
+  }
 }
 
 void drawCar(uint16_t idx, uint8_t tail, uint32_t color) {
@@ -139,8 +151,8 @@ void loop() {
     }
   }
 
-  // Demo: se não receber dados por 2s, movimenta 1 pixel para validar hardware
-  if (!haveLiveData || (millis() - lastMsgMs > 2000)) {
+  // Demo: se não receber dados por 2s OU se running=false, roda demo
+  if (!haveLiveData || (millis() - lastMsgMs > 2000) || !gameRunning) {
     static unsigned long lastStep = 0;
     static uint16_t demoIdx = 0;
     if (millis() - lastStep > 80) {
