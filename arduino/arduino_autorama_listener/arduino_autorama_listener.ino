@@ -238,7 +238,7 @@ void loop() {
           Serial.println("{\"debug\":\"Processando state\"}");
           applyStateFromJson(lineBuf);
           renderFrame();
-          haveLiveData = true;
+                    haveLiveData = true;
           lastMsgMs = millis();
           // DEBUG: Log do estado atual
           Serial.print("{\"debug\":\"Estado atualizado - gameRunning:\"");
