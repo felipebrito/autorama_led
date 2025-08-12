@@ -304,6 +304,30 @@ class LEDRace {
         });
     }
 
+    // IMPLEMENTAÇÃO QUE FUNCIONA (copiada do serial_test.html)
+    startReadLoop() {
+        if (!this.reader) return;
+        
+        const pump = async () => {
+            try {
+                while (true) {
+                    const { value, done } = await this.reader.read();
+                    if (done) break;
+                    
+                    if (value) {
+                        const text = new TextDecoder().decode(value);
+                        console.log('[SERIAL RX]', text);
+                    }
+                }
+            } catch (err) {
+                console.warn('[SERIAL] Read loop ended:', err);
+            } finally {
+                try { this.reader.releaseLock(); } catch (_) {}
+            }
+        };
+        pump();
+    }
+
     async openSelectedPort(port) {
         if (!port) throw new Error('No port provided');
         
