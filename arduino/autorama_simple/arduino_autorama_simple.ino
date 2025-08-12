@@ -91,37 +91,67 @@ void loop() {
 void processMessage(String message) {
   message.trim(); // Remover espaços
   
+  Serial.print("Processando mensagem: '");
+  Serial.print(message);
+  Serial.println("'");
+  
   // Comandos de teste via Serial Monitor
   if (message.equalsIgnoreCase("demo")) {
+    Serial.println("Comando DEMO detectado");
     runDemoAnimation();
   } else if (message.equalsIgnoreCase("jogador1")) {
+    Serial.println("Comando JOGADOR1 detectado");
     testJogador1();
   } else if (message.equalsIgnoreCase("jogador2")) {
+    Serial.println("Comando JOGADOR2 detectado");
     testJogador2();
   } else if (message.equalsIgnoreCase("simular")) {
+    Serial.println("Comando SIMULAR detectado");
     startSimulation();
   } else if (message.equalsIgnoreCase("parar")) {
+    Serial.println("Comando PARAR detectado");
     stopTestMode();
   } else if (message.equalsIgnoreCase("ajuda") || message.equalsIgnoreCase("help")) {
+    Serial.println("Comando AJUDA detectado");
     showHelp();
   } else if (message.equalsIgnoreCase("limpar")) {
+    Serial.println("Comando LIMPAR detectado");
+    Serial.println("Executando comando LIMPAR...");
     strip.clear();
     strip.show();
-    Serial.println("LEDs limpos");
+    Serial.println("LEDs limpos com sucesso!");
+    
+    // Confirmação visual - piscar azul 2x
+    for (int flash = 0; flash < 2; flash++) {
+      for (int i = 0; i < NUM_LEDS; i++) {
+        strip.setPixelColor(i, strip.Color(0, 0, 100));
+      }
+      strip.show();
+      delay(100);
+      strip.clear();
+      strip.show();
+      delay(100);
+    }
   } else if (message.equalsIgnoreCase("teste")) {
+    Serial.println("Comando TESTE detectado");
     testAllLEDs();
   } else if (message.indexOf("\"type\":\"config\"") >= 0) {
+    Serial.println("Comando CONFIG detectado");
     handleConfig(message);
   } else if (message.indexOf("\"type\":\"state\"") >= 0) {
+    Serial.println("Comando STATE detectado");
     handleState(message);
     renderFrame();
   } else if (message.indexOf("\"type\":\"effect\"") >= 0) {
+    Serial.println("Comando EFFECT detectado");
     handleEffect();
   } else if (message.indexOf("\"type\":\"ping\"") >= 0) {
+    Serial.println("Comando PING detectado");
     handlePing();
   } else {
-    Serial.print("Comando não reconhecido: ");
-    Serial.println(message);
+    Serial.print("Comando não reconhecido: '");
+    Serial.print(message);
+    Serial.println("'");
     Serial.println("Digite 'ajuda' para ver comandos disponíveis");
   }
 }
@@ -223,25 +253,47 @@ void startSimulation() {
   testMode = true;
   testStartTime = millis();
   
-  // Simular dados de configuração
-  Serial.println("{\"type\":\"config\",\"maxLed\":20,\"loopMax\":5,\"acel\":0.2,\"kf\":0.015,\"kg\":0.003,\"tail\":3}");
+  // Indicador visual de que está em modo de teste
+  for (int i = 0; i < NUM_LEDS; i++) {
+    strip.setPixelColor(i, strip.Color(255, 255, 0)); // Amarelo
+  }
+  strip.show();
+  delay(500);
+  strip.clear();
+  strip.show();
   
-  // Simular início do jogo
-  Serial.println("{\"type\":\"state\",\"dist1\":0,\"dist2\":0,\"speed1\":0,\"speed2\":0,\"loop1\":0,\"loop2\":0,\"leader\":0,\"running\":1}");
+  Serial.println("1. Enviando CONFIG...");
+  processMessage("{\"type\":\"config\",\"maxLed\":20,\"loopMax\":5,\"acel\":0.2,\"kf\":0.015,\"kg\":0.003,\"tail\":3}");
+  delay(500);
   
+  Serial.println("2. Iniciando JOGO...");
+  processMessage("{\"type\":\"state\",\"dist1\":0,\"dist2\":0,\"speed1\":0,\"speed2\":0,\"loop1\":0,\"loop2\":0,\"leader\":0,\"running\":1}");
+  delay(1000);
+  
+  Serial.println("3. Simulando movimento dos carros...");
   // Simular movimento dos carros
   for (int step = 0; step < 20; step++) {
     float d1 = step * 1.5;
     float d2 = step * 1.2;
     
     String stateMsg = "{\"type\":\"state\",\"dist1\":" + String(d1) + ",\"dist2\":" + String(d2) + ",\"speed1\":1.5,\"speed2\":1.2,\"loop1\":" + (step/5) + ",\"loop2\":" + (step/6) + ",\"leader\":" + (d1 > d2 ? 1 : 2) + ",\"running\":1}";
-    Serial.println(stateMsg);
+    processMessage(stateMsg);
     
-    delay(200);
+    Serial.print("Step "); Serial.print(step); Serial.print(": d1="); Serial.print(d1); Serial.print(", d2="); Serial.println(d2);
+    delay(300);
   }
   
-  // Simular fim do jogo
-  Serial.println("{\"type\":\"state\",\"dist1\":30,\"dist2\":24,\"speed1\":0,\"speed2\":0,\"loop1\":1,\"loop2\":0,\"leader\":1,\"running\":0}");
+  Serial.println("4. Finalizando jogo...");
+  processMessage("{\"type\":\"state\",\"dist1\":30,\"dist2\":24,\"speed1\":0,\"speed2\":0,\"loop1\":1,\"loop2\":0,\"leader\":1,\"running\":0}");
+  
+  // Indicador visual de conclusão
+  for (int i = 0; i < NUM_LEDS; i++) {
+    strip.setPixelColor(i, strip.Color(0, 255, 0)); // Verde
+  }
+  strip.show();
+  delay(500);
+  strip.clear();
+  strip.show();
   
   Serial.println("Simulação concluída!");
   testMode = false;
