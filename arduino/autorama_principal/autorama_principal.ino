@@ -55,6 +55,9 @@ void loop() {
       if (inChar == '\n') {
         stringComplete = true;
         Serial.println("DEBUG: \\n detectado, mensagem completa!");
+        Serial.print("DEBUG: inputString antes do processamento: '");
+        Serial.print(inputString);
+        Serial.println("'");
       } else {
         inputString += inChar;
         Serial.print("DEBUG: Caractere recebido: '");

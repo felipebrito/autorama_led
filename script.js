@@ -317,6 +317,9 @@ class LEDRace {
                     if (value) {
                         const text = new TextDecoder().decode(value);
                         console.log('[SERIAL RX]', text);
+                        
+                        // DEBUG VISUAL: Mostrar dados recebidos na tela
+                        this.showDebugInfo('RX', text);
                     }
                 }
             } catch (err) {
@@ -326,6 +329,47 @@ class LEDRace {
             }
         };
         pump();
+    }
+
+    // FUNÇÃO DE DEBUG VISUAL
+    showDebugInfo(type, data) {
+        const debugDiv = document.getElementById('debugInfo') || this.createDebugDiv();
+        
+        const timestamp = new Date().toLocaleTimeString();
+        const debugEntry = document.createElement('div');
+        debugEntry.innerHTML = `<span style="color: #666;">[${timestamp}]</span> <span style="color: ${type === 'TX' ? 'blue' : 'green'};">${type}:</span> ${data}`;
+        
+        debugDiv.appendChild(debugEntry);
+        debugDiv.scrollTop = debugDiv.scrollHeight;
+        
+        // Manter apenas os últimos 20 logs
+        while (debugDiv.children.length > 20) {
+            debugDiv.removeChild(debugDiv.firstChild);
+        }
+    }
+
+    // CRIAR DIV DE DEBUG SE NÃO EXISTIR
+    createDebugDiv() {
+        const debugDiv = document.createElement('div');
+        debugDiv.id = 'debugInfo';
+        debugDiv.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 400px;
+            max-height: 300px;
+            background: #000;
+            color: #0f0;
+            font-family: monospace;
+            font-size: 12px;
+            padding: 10px;
+            border: 1px solid #0f0;
+            overflow-y: auto;
+            z-index: 1000;
+        `;
+        debugDiv.innerHTML = '<div style="color: #fff; font-weight: bold; margin-bottom: 10px;">DEBUG SERIAL</div>';
+        document.body.appendChild(debugDiv);
+        return debugDiv;
     }
 
     async openSelectedPort(port) {
@@ -953,11 +997,20 @@ class LEDRace {
             
             // IMPLEMENTAÇÃO QUE FUNCIONA (copiada do serial_test.html)
             const data = new TextEncoder().encode(command + '\n');
+            
+            // DEBUG VISUAL: Mostrar dados sendo enviados
+            this.showDebugInfo('TX', `Comando: ${command}`);
+            this.showDebugInfo('TX', `Dados hex: [${Array.from(data).map(b => '0x' + b.toString(16).padStart(2, '0')).join(', ')}]`);
+            
             await this.writer.write(data);
             console.log(`[UI] Comando ${command} enviado com sucesso!`);
             
+            // DEBUG VISUAL: Confirmação de envio
+            this.showDebugInfo('TX', `✓ Enviado com sucesso: ${command}`);
+            
         } catch (error) {
             console.error(`[UI] Erro ao enviar comando ${command}:`, error);
+            this.showDebugInfo('ERROR', `Erro ao enviar ${command}: ${error.message}`);
             alert(`Erro ao enviar comando ${command}: ` + error.message);
         }
     }
