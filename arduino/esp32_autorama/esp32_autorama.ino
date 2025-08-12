@@ -106,12 +106,12 @@ void loop() {
     runTestMode();
   }
   
-  // DEMO PERIÓDICO
-  static unsigned long lastDemo = 0;
-  if (millis() - lastDemo > 10000 && !testMode) {
-    runDemo();
-    lastDemo = millis();
-  }
+  // DEMO PERIÓDICO (DESATIVADO - SÓ MANUAL)
+  // static unsigned long lastDemo = 0;
+  // if (millis() - lastDemo > 10000 && !testMode) {
+  //   runDemo();
+  //   lastDemo = millis();
+  // }
   
   // MANTER WI-FI ATIVO (AP mode não precisa reconectar)
   static unsigned long lastWiFiCheck = 0;
@@ -130,6 +130,14 @@ void loop() {
   // ATUALIZAR JOGO
   if (gameRunning) {
     updateGame();
+    
+    // Debug a cada segundo
+    static unsigned long lastDebug = 0;
+    if (millis() - lastDebug > 1000) {
+      lastDebug = millis();
+      Serial.printf("Jogo: P1(%.1f, %.1f, %d) P2(%.1f, %.1f, %d)\n", 
+                   dist1, vel1, loop1, dist2, vel2, loop2);
+    }
   }
 }
 
@@ -399,6 +407,10 @@ void startGame() {
   dist2 = 0.0f;
   vel1 = 0.0f;
   vel2 = 0.0f;
+  loop1 = 0;
+  loop2 = 0;
+  lapStart1 = millis();
+  lapStart2 = millis();
   
   // Countdown visual
   for (int i = 0; i < 3; i++) {
@@ -412,7 +424,7 @@ void startGame() {
     delay(500);
   }
   
-  Serial.println("✓ Jogo iniciado!");
+  Serial.println("✓ Jogo iniciado! Primeiro a 5 voltas vence!");
 }
 
 void stopGame() {
@@ -463,9 +475,36 @@ void renderGameState() {
   strip.clear();
   
   // Renderizar posição dos carros
-  int pos1 = map(dist1, 0, 100, 0, NUM_LEDS-1);
-  int pos2 = map(dist2, 0, 100, 0, NUM_LEDS-1);
+  int pos1 = map(dist1, 0, maxLed, 0, NUM_LEDS-1);
+  int pos2 = map(dist2, 0, maxLed, 0, NUM_LEDS-1);
   
+  // Garantir que posições sejam válidas
+  pos1 = constrain(pos1, 0, NUM_LEDS-1);
+  pos2 = constrain(pos2, 0, NUM_LEDS-1);
+  
+  // Renderizar Jogador 1 (vermelho) com rastro
+  for (int i = 0; i <= tail; i++) {
+    int rastro1 = pos1 - i;
+    if (rastro1 >= 0 && rastro1 < NUM_LEDS) {
+      int intensidade = 255 - (i * 50);
+      if (intensidade > 0) {
+        strip.setPixelColor(rastro1, strip.Color(intensidade, 0, 0));
+      }
+    }
+  }
+  
+  // Renderizar Jogador 2 (verde) com rastro
+  for (int i = 0; i <= tail; i++) {
+    int rastro2 = pos2 - i;
+    if (rastro2 >= 0 && rastro2 < NUM_LEDS) {
+      int intensidade = 255 - (i * 50);
+      if (intensidade > 0) {
+        strip.setPixelColor(rastro2, strip.Color(0, intensidade, 0));
+      }
+    }
+  }
+  
+  // Posição principal dos carros (mais brilhante)
   strip.setPixelColor(pos1, strip.Color(255, 0, 0));  // Jogador 1 vermelho
   strip.setPixelColor(pos2, strip.Color(0, 255, 0));  // Jogador 2 verde
   
@@ -515,12 +554,12 @@ void updateGame() {
   
   // Processar botões pressionados
   if (btn1Pressed) {
-    vel1 += 0.5f; // Acelerar Jogador 1
+    vel1 += acel; // Acelerar Jogador 1
     btn1Pressed = false;
   }
   
   if (btn2Pressed) {
-    vel2 += 0.5f; // Acelerar Jogador 2
+    vel2 += acel; // Acelerar Jogador 2
     btn2Pressed = false;
   }
   
@@ -528,22 +567,41 @@ void updateGame() {
   dist1 += vel1;
   dist2 += vel2;
   
-  // Aplicar atrito
-  vel1 *= 0.95f;
-  vel2 *= 0.95f;
+  // Aplicar atrito e gravidade
+  vel1 *= (1.0f - kf);
+  vel2 *= (1.0f - kf);
   
-  // Limitar distância
-  if (dist1 > 100.0f) dist1 = 100.0f;
-  if (dist2 > 100.0f) dist2 = 100.0f;
+  // Aplicar gravidade (desaceleração natural)
+  if (vel1 > 0) vel1 -= kg;
+  if (vel2 > 0) vel2 -= kg;
   
-  // Verificar vitória
-  if (dist1 >= 100.0f || dist2 >= 100.0f) {
+  // Garantir velocidade não negativa
+  if (vel1 < 0) vel1 = 0;
+  if (vel2 < 0) vel2 = 0;
+  
+  // Verificar volta completa
+  if (dist1 >= maxLed) {
+    loop1++;
+    dist1 = 0;
+    lapStart1 = millis();
+    Serial.printf("Jogador 1 completou volta %d!\n", loop1);
+  }
+  
+  if (dist2 >= maxLed) {
+    loop2++;
+    dist2 = 0;
+    lapStart2 = millis();
+    Serial.printf("Jogador 2 completou volta %d!\n", loop2);
+  }
+  
+  // Verificar vitória (5 voltas)
+  if (loop1 >= loopMax || loop2 >= loopMax) {
     gameRunning = false;
-    if (dist1 >= 100.0f) {
-      Serial.println("Jogador 1 venceu!");
+    if (loop1 >= loopMax) {
+      Serial.println("Jogador 1 venceu a corrida!");
       victoryEffect(1);
     } else {
-      Serial.println("Jogador 2 venceu!");
+      Serial.println("Jogador 2 venceu a corrida!");
       victoryEffect(2);
     }
     return;
@@ -552,8 +610,11 @@ void updateGame() {
   // Renderizar estado atual
   renderGameState();
   
-  // Enviar estado via WebSocket
-  String stateMsg = "{\"type\":\"state\",\"dist1\":" + String(dist1) + ",\"dist2\":" + String(dist2) + ",\"running\":1}";
+  // Enviar estado via WebSocket com todas as informações
+  String stateMsg = "{\"type\":\"state\",\"dist1\":" + String(dist1) + ",\"dist2\":" + String(dist2) + 
+                   ",\"vel1\":" + String(vel1) + ",\"vel2\":" + String(vel2) + 
+                   ",\"loop1\":" + String(loop1) + ",\"loop2\":" + String(loop2) + 
+                   ",\"running\":1}";
   webSocket.broadcastTXT(stateMsg);
 }
 
