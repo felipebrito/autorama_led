@@ -916,7 +916,20 @@ class LEDRace {
             return;
         }
         
+        // VERIFICAR CONEXÃO REAL
         try {
+            console.log(`[UI] Verificando conexão...`);
+            console.log(`[UI] this.port:`, this.port);
+            console.log(`[UI] this.writer:`, this.writer);
+            console.log(`[UI] Porta aberta:`, this.port?.readable && this.port?.writable);
+            
+            // Testar se a porta ainda está ativa
+            if (!this.port?.readable || !this.port?.writable) {
+                console.error('[UI] Porta serial não está ativa!');
+                alert('Conexão serial perdida. Reconecte o Arduino!');
+                return;
+            }
+            
             console.log(`[UI] Enviando comando direto: ${command}`);
             
             // ENVIAR COMANDO VÁRIAS VEZES PARA GARANTIR
