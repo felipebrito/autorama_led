@@ -200,6 +200,11 @@ void processMessage(String message) {
     Serial.println("Chamando handleConfig...");
     handleConfig(message);
     Serial.println("✓ handleConfig concluído");
+  } else if (message.indexOf("\"type\":\"state\"") >= 0) {
+    Serial.println("✓ Comando STATE detectado");
+    Serial.println("Chamando handleState...");
+    handleState(message);
+    Serial.println("✓ handleState concluído");
   } else if (message.indexOf("\"type\":\"effect\"") >= 0) {
     Serial.println("✓ Comando EFFECT detectado");
     Serial.println("Chamando handleEffect...");
