@@ -1,302 +1,280 @@
 /*
- * Arduino Autorama Listener - Corrigido
- * Para receber dados do navegador via Web Serial API
+ * Arduino Autorama Listener - Versão Corrigida e Simplificada
+ * Baseada no led_test_simple.ino que funciona
  */
 
-// Incluir biblioteca NeoPixel
 #include <Adafruit_NeoPixel.h>
 
 // PINAGEM (ajuste se necessário)
 #define PIN_LED      6          // pino da fita WS2812/WS2813
-#define MAX_PIXELS   300        // capacidade máxima suportada pelo objeto NeoPixel
-// AJUSTE AQUI: quantidade REAL de LEDs na sua fita conectada
-#ifndef PHYS_PIXELS
-#define PHYS_PIXELS  20         // EX.: 20 LEDs físicos conectados
-#endif
+#define MAX_PIXELS   300        // capacidade máxima suportada
+#define PHYS_PIXELS  20         // QUANTIDADE REAL de LEDs na sua fita
 
 // FITA
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(MAX_PIXELS, PIN_LED, NEO_GRB + NEO_KHZ800);
 
 // ESTADO E CONFIG
-uint16_t numPixels = PHYS_PIXELS; // tamanho lógico da pista (recebido via config.maxLed e limitado aos LEDs físicos)
-uint8_t  tailLen   = 3;         // tamanho do rastro (opcional via config.tail)
-uint32_t colorP1   = strip.Color(255, 0, 0);   // carro 1 (vermelho)
-uint32_t colorP2   = strip.Color(0, 255, 0);   // carro 2 (verde)
-uint32_t colorBG   = strip.Color(0, 0, 0);     // fundo
-
-// DEBUG: Log das cores definidas
-void logColors() {
-  Serial.print("{\"debug\":\"Cores definidas - colorP1:\"");
-  Serial.print(colorP1);
-  Serial.print(", colorP2:\"");
-  Serial.print(colorP2);
-  Serial.print(", colorBG:\"");
-  Serial.print(colorBG);
-  Serial.println("\"}");
-}
-
-// Recepção serial (NDJSON: 1 JSON por linha)
-static const uint16_t RX_BUF = 512;  // Aumentado para mensagens maiores
-char lineBuf[RX_BUF];
-uint16_t lineLen = 0;
+uint16_t numPixels = PHYS_PIXELS;
+uint8_t  tailLen   = 3;
 
 // Estado vindo do navegador
 float dist1 = 0.0f, dist2 = 0.0f;
-unsigned long lastMsgMs = 0;   // última msg válida recebida
-bool haveLiveData = false;     // já recebemos 'state'
-bool gameRunning = false;      // vindo do navegador
+unsigned long lastMsgMs = 0;
+bool haveLiveData = false;
+bool gameRunning = false;
 
-template<typename T>
-T clampT(T v, T lo, T hi) { return v < lo ? lo : (v > hi ? hi : v); }
-
-// Parse simples de número em JSON: procura "key":<número>
-bool parseNumber(const char* src, const char* key, float& out) {
-  const char* k = strstr(src, key);
-  if (!k) return false;
-  k = strchr(k, ':'); if (!k) return false; k++;
-  while (*k==' '||*k=='\t') k++;
-  char* endptr = nullptr;
-  out = strtod(k, &endptr);
-  return endptr != k;
-}
-
-bool parseUInt16(const char* src, const char* key, uint16_t& out) {
-  float tmp = 0;
-  if (!parseNumber(src, key, tmp)) return false;
-  out = (uint16_t)(tmp + 0.5f);
-  return true;
-}
-
-// Função mais robusta para detectar tipo de mensagem
-bool hasType(const char* src, const char* typeName) {
-  char needle[64];
-  snprintf(needle, sizeof(needle), "\"type\":\"%s\"", typeName);
-  return strstr(src, needle) != nullptr;
-}
-
-void applyConfigFromJson(const char* json) {
-  uint16_t v;
-  if (parseUInt16(json, "\"maxLed\"", v)) {
-    // Nunca ultrapassar a quantidade FÍSICA de LEDs conectados
-    uint16_t limit = (PHYS_PIXELS < MAX_PIXELS) ? PHYS_PIXELS : MAX_PIXELS;
-    numPixels = clampT<uint16_t>(v, 1, limit);
-    Serial.print("{\"debug\":\"maxLed setado para:\"");
-    Serial.print(numPixels);
-    Serial.println("\"}");
-  }
-  float tail;
-  if (parseNumber(json, "\"tail\"", tail)) {
-    tailLen = (uint8_t)clampT<int>((int)tail, 0, 20);
-    Serial.print("{\"debug\":\"tail setado para:\"");
-    Serial.print(tailLen);
-    Serial.println("\"}");
-  }
-}
-
-void applyStateFromJson(const char* json) {
-  float v;
-  if (parseNumber(json, "\"dist1\"", v)) {
-    dist1 = v;
-    Serial.print("{\"debug\":\"dist1:\"");
-    Serial.print(dist1);
-    Serial.println("\"}");
-  }
-  if (parseNumber(json, "\"dist2\"", v)) {
-    dist2 = v;
-    Serial.print("{\"debug\":\"dist2:\"");
-    Serial.print(dist2);
-    Serial.println("\"}");
-  }
-  // running opcional
-  if (strstr(json, "\"running\"")) {
-    float r = 0;
-    if (parseNumber(json, "\"running\"", r)) {
-      gameRunning = (r != 0.0f);
-      Serial.print("{\"debug\":\"running setado para:\"");
-      Serial.print(gameRunning ? "true" : "false");
-      Serial.println("\"}");
-    } else {
-      // se vier como booleano true/false textual, faz fallback simples
-      if (strstr(json, "\"running\":true")) {
-        gameRunning = true;
-        Serial.println("{\"debug\":\"running fallback para true\"}");
-      }
-      if (strstr(json, "\"running\":false")) {
-        gameRunning = false;
-        Serial.println("{\"debug\":\"running fallback para false\"}");
-      }
-    }
-  }
-}
-
-void renderFrame() {
-  // DEBUG: Log antes de limpar
-  Serial.println("{\"debug\":\"renderFrame iniciado\"}");
-  
-  strip.clear();
-  
-  // índices atuais (alinhados à pista lógica)
-  int i1 = ((long)floor(dist1) % numPixels + numPixels) % numPixels;
-  int i2 = ((long)floor(dist2) % numPixels + numPixels) % numPixels;
-
-  // DEBUG: Log das posições calculadas
-  Serial.print("{\"debug\":\"renderFrame - pos1:\"");
-  Serial.print(i1);
-  Serial.print(", pos2:\"");
-  Serial.print(i2);
-  Serial.print(", numPixels:\"");
-  Serial.print(numPixels);
-  Serial.print(", dist1:\"");
-  Serial.print(dist1);
-  Serial.print(", dist2:\"");
-  Serial.print(dist2);
-  Serial.println("\"}");
-
-  // DEBUG: Log antes de desenhar
-  Serial.println("{\"debug\":\"Desenhando carros...\"}");
-  
-  // Desenhar carro 1 (vermelho) - SIMPLIFICADO
-  strip.setPixelColor(i1, colorP1);
-  // Rastro do carro 1
-  for (uint8_t i = 1; i <= tailLen; i++) {
-    uint16_t p = (i1 + i) % numPixels;
-    strip.setPixelColor(p, strip.Color(100, 0, 0)); // Vermelho mais fraco
-  }
-  
-  // Desenhar carro 2 (verde) - SIMPLIFICADO
-  strip.setPixelColor(i2, colorP2);
-  // Rastro do carro 2
-  for (uint8_t i = 1; i <= tailLen; i++) {
-    uint16_t p = (i2 + i) % numPixels;
-    strip.setPixelColor(p, strip.Color(0, 100, 0)); // Verde mais fraco
-  }
-
-  // DEBUG: Log após desenhar
-  Serial.println("{\"debug\":\"Carros desenhados, chamando strip.show()\"}");
-  
-  strip.show();
-  
-  // DEBUG: Log após show
-  Serial.println("{\"debug\":\"strip.show() executado\"}");
-}
-
-void showColor(uint8_t r, uint8_t g, uint8_t b, uint16_t count, uint16_t delayMs) {
-  uint32_t c = strip.Color(r,g,b);
-  count = (count > MAX_PIXELS) ? MAX_PIXELS : count;
-  for (uint16_t i = 0; i < count; i++) strip.setPixelColor(i, c);
-  strip.show();
-  delay(delayMs);
-}
-
-void selfTest() {
-  // Sequência curta para validar alimentação/dados
-  showColor(50, 0, 0, numPixels, 300);
-  showColor(0, 50, 0, numPixels, 300);
-  showColor(0, 0, 50, numPixels, 300);
-  // limpa
-  strip.clear();
-  strip.show();
-}
+// Buffer para receber mensagens
+static const uint16_t RX_BUF = 512;
+char lineBuf[RX_BUF];
+uint16_t lineLen = 0;
 
 void setup() {
   Serial.begin(115200);
+  delay(1000);
+  
+  Serial.println("Arduino Autorama Listener iniciando...");
+  
   strip.begin();
-  strip.show();
+  strip.show(); // Limpar LEDs
   
-  // DEBUG: Log das cores
-  logColors();
+  // Teste visual de inicialização
+  testLEDs();
   
-  selfTest();
   Serial.println("{\"arduino\":\"ready\",\"leds\":20}");
   Serial.println("{\"status\":\"Arduino iniciado e aguardando comandos\"}");
 }
 
 void loop() {
   // Leitura não bloqueante de linhas
-  bool gotLine = false;
   while (Serial.available() > 0) {
     char c = (char)Serial.read();
     if (c == '\r') continue;
     if (c == '\n') {
-      lineBuf[clampT<uint16_t>(lineLen, 0, RX_BUF-1)] = '\0';
+      lineBuf[lineLen] = '\0';
       if (lineLen > 0) {
-        // DEBUG: Log de todas as mensagens recebidas
-        Serial.print("{\"debug\":\"RX:\"");
-        Serial.print(lineBuf);
-        Serial.println("\"}");
-        
-        if (hasType(lineBuf, "config")) {
-          Serial.println("{\"debug\":\"Processando config\"}");
-          applyConfigFromJson(lineBuf);
-        } else if (hasType(lineBuf, "state")) {
-          Serial.println("{\"debug\":\"Processando state\"}");
-          applyStateFromJson(lineBuf);
-          renderFrame();
-                    haveLiveData = true;
-          lastMsgMs = millis();
-          // DEBUG: Log do estado atual
-          Serial.print("{\"debug\":\"Estado atualizado - gameRunning:\"");
-          Serial.print(gameRunning ? "true" : "false");
-          Serial.print(", haveLiveData:\"");
-          Serial.print(haveLiveData ? "true" : "false");
-          Serial.print(", lastMsgMs:\"");
-          Serial.print(lastMsgMs);
-          Serial.println("\"}");
-        } else if (hasType(lineBuf, "effect")) {
-          Serial.println("{\"debug\":\"Processando effect\"}");
-          // Efeito simples: flash branco em todos os LEDs
-          strip.clear();
-          for (uint16_t i = 0; i < numPixels; i++) strip.setPixelColor(i, strip.Color(80, 80, 80));
-          strip.show();
-          delay(120);
-          strip.clear();
-          strip.show();
-        } else if (hasType(lineBuf, "ping")) {
-          // Resposta ao ping + piscar centro
-          Serial.println("{\"pong\":\"ok\"}");
-          int center = numPixels / 2;
-          strip.setPixelColor(center, strip.Color(255, 255, 255));
-          strip.show();
-          delay(80);
-          strip.setPixelColor(center, strip.Color(0, 0, 0));
-          strip.show();
-        } else {
-          Serial.println("{\"debug\":\"Tipo nao reconhecido\"}");
-        }
+        processMessage(lineBuf);
+        lastMsgMs = millis();
+        haveLiveData = true;
       }
       lineLen = 0;
-      gotLine = true;
     } else if (lineLen < RX_BUF - 1) {
       lineBuf[lineLen++] = c;
     } else {
-      // overflow: descarta a linha
-      lineLen = 0;
+      lineLen = 0; // overflow: descarta a linha
     }
   }
 
-  // Demo: CORREÇÃO CRÍTICA - só roda demo se não tiver dados vivos E game não estiver rodando
-  if (!haveLiveData || (millis() - lastMsgMs > 2000)) {
-    // Se temos dados vivos E o jogo está rodando, NÃO roda demo
+  // Demo: só roda se não tiver dados vivos
+  if (!haveLiveData || (millis() - lastMsgMs > 3000)) {
     if (haveLiveData && gameRunning) {
-      // DEBUG: Log que demo foi bloqueado
-      static unsigned long lastDemoLog = 0;
-      if (millis() - lastDemoLog > 1000) {
-        Serial.println("{\"debug\":\"Demo bloqueado - jogo ativo\"}");
-        lastDemoLog = millis();
-      }
-      return; // Sai sem executar demo
+      // Se temos dados vivos E jogo ativo, NÃO roda demo
+      return;
     }
-    
-    // Demo só roda quando não há dados vivos ou dados antigos
-    static unsigned long lastStep = 0;
-    static uint16_t demoIdx = 0;
-    if (millis() - lastStep > 80) {
-      lastStep = millis();
-      strip.clear();
-      strip.setPixelColor(demoIdx % numPixels, strip.Color(30, 30, 0));
-      strip.show();
-      demoIdx++;
-    }
+    runDemo();
+  }
+}
+
+void processMessage(const char* message) {
+  Serial.print("{\"debug\":\"RX:\"");
+  Serial.print(message);
+  Serial.println("\"}");
+  
+  if (strstr(message, "\"type\":\"config\"")) {
+    handleConfig(message);
+  } else if (strstr(message, "\"type\":\"state\"")) {
+    handleState(message);
+    renderFrame();
+  } else if (strstr(message, "\"type\":\"effect\"")) {
+    handleEffect();
+  } else if (strstr(message, "\"type\":\"ping\"")) {
+    handlePing();
+  } else {
+    Serial.println("{\"debug\":\"Tipo nao reconhecido\"}");
+  }
+}
+
+void handleConfig(const char* message) {
+  Serial.println("{\"debug\":\"Processando config\"}");
+  
+  // Extrair maxLed
+  int maxLed = extractValue(message, "maxLed");
+  if (maxLed > 0) {
+    numPixels = (maxLed < PHYS_PIXELS) ? maxLed : PHYS_PIXELS;
+    Serial.print("{\"debug\":\"maxLed setado para:\"");
+    Serial.print(numPixels);
+    Serial.println("\"}");
+  }
+  
+  // Extrair tail
+  int tail = extractValue(message, "tail");
+  if (tail > 0) {
+    tailLen = (tail < 20) ? tail : 20;
+    Serial.print("{\"debug\":\"tail setado para:\"");
+    Serial.print(tailLen);
+    Serial.println("\"}");
+  }
+  
+  // Confirmar config
+  showConfigReceived();
+}
+
+void handleState(const char* message) {
+  Serial.println("{\"debug\":\"Processando state\"}");
+  
+  // Extrair dist1
+  float d1 = extractFloat(message, "dist1");
+  if (d1 >= 0) {
+    dist1 = d1;
+    Serial.print("{\"debug\":\"dist1:\"");
+    Serial.print(dist1);
+    Serial.println("\"}");
+  }
+  
+  // Extrair dist2
+  float d2 = extractFloat(message, "dist2");
+  if (d2 >= 0) {
+    dist2 = d2;
+    Serial.print("{\"debug\":\"dist2:\"");
+    Serial.print(dist2);
+    Serial.println("\"}");
+  }
+  
+  // Extrair running
+  if (strstr(message, "\"running\"")) {
+    float r = extractFloat(message, "running");
+    gameRunning = (r != 0.0f);
+    Serial.print("{\"debug\":\"running setado para:\"");
+    Serial.print(gameRunning ? "true" : "false");
+    Serial.println("\"}");
+  }
+}
+
+void handleEffect() {
+  Serial.println("{\"debug\":\"Processando effect\"}");
+  // Flash branco em todos os LEDs
+  for (uint16_t i = 0; i < numPixels; i++) {
+    strip.setPixelColor(i, strip.Color(80, 80, 80));
+  }
+  strip.show();
+  delay(120);
+  strip.clear();
+  strip.show();
+}
+
+void handlePing() {
+  Serial.println("{\"pong\":\"ok\"}");
+  // Piscar LED central
+  int center = numPixels / 2;
+  strip.setPixelColor(center, strip.Color(255, 255, 255));
+  strip.show();
+  delay(80);
+  strip.setPixelColor(center, strip.Color(0, 0, 0));
+  strip.show();
+}
+
+void renderFrame() {
+  Serial.println("{\"debug\":\"renderFrame iniciado\"}");
+  
+  strip.clear();
+  
+  // Calcular posições
+  int i1 = ((long)floor(dist1) % numPixels + numPixels) % numPixels;
+  int i2 = ((long)floor(dist2) % numPixels + numPixels) % numPixels;
+  
+  Serial.print("{\"debug\":\"Posicoes - i1:\"");
+  Serial.print(i1);
+  Serial.print(", i2:\"");
+  Serial.print(i2);
+  Serial.print(", numPixels:\"");
+  Serial.print(numPixels);
+  Serial.println("\"}");
+  
+  // Desenhar carro 1 (vermelho)
+  strip.setPixelColor(i1, strip.Color(255, 0, 0));
+  // Rastro do carro 1
+  for (uint8_t i = 1; i <= tailLen; i++) {
+    uint16_t p = (i1 + i) % numPixels;
+    strip.setPixelColor(p, strip.Color(100, 0, 0));
+  }
+  
+  // Desenhar carro 2 (verde)
+  strip.setPixelColor(i2, strip.Color(0, 255, 0));
+  // Rastro do carro 2
+  for (uint8_t i = 1; i <= tailLen; i++) {
+    uint16_t p = (i2 + i) % numPixels;
+    strip.setPixelColor(p, strip.Color(0, 100, 0));
+  }
+  
+  Serial.println("{\"debug\":\"Carros desenhados, chamando strip.show()\"}");
+  strip.show();
+  Serial.println("{\"debug\":\"strip.show() executado\"}");
+}
+
+// Funções auxiliares para extrair valores
+int extractValue(const char* message, const char* key) {
+  const char* k = strstr(message, key);
+  if (!k) return -1;
+  k = strchr(k, ':'); if (!k) return -1; k++;
+  while (*k==' '||*k=='\t') k++;
+  char* endptr = nullptr;
+  return strtol(k, &endptr, 10);
+}
+
+float extractFloat(const char* message, const char* key) {
+  const char* k = strstr(message, key);
+  if (!k) return -1.0f;
+  k = strchr(k, ':'); if (!k) return -1.0f; k++;
+  while (*k==' '||*k=='\t') k++;
+  char* endptr = nullptr;
+  return strtof(k, &endptr);
+}
+
+void showConfigReceived() {
+  // Piscar verde para confirmar config
+  for (uint16_t i = 0; i < numPixels; i++) {
+    strip.setPixelColor(i, strip.Color(0, 100, 0));
+  }
+  strip.show();
+  delay(200);
+  strip.clear();
+  strip.show();
+}
+
+void testLEDs() {
+  // Sequência RGB para testar todos os LEDs
+  for (int i = 0; i < numPixels; i++) {
+    strip.setPixelColor(i, strip.Color(50, 0, 0));   // Vermelho
+  }
+  strip.show();
+  delay(300);
+  
+  for (int i = 0; i < numPixels; i++) {
+    strip.setPixelColor(i, strip.Color(0, 50, 0));   // Verde
+  }
+  strip.show();
+  delay(300);
+  
+  for (int i = 0; i < numPixels; i++) {
+    strip.setPixelColor(i, strip.Color(0, 0, 50));   // Azul
+  }
+  strip.show();
+  delay(300);
+  
+  // Limpar
+  strip.clear();
+  strip.show();
+}
+
+void runDemo() {
+  static unsigned long lastStep = 0;
+  static uint16_t demoIdx = 0;
+  
+  if (millis() - lastStep > 100) {
+    strip.clear();
+    strip.setPixelColor(demoIdx % numPixels, strip.Color(30, 30, 0));
+    strip.show();
+    demoIdx++;
+    lastStep = millis();
   }
 }
 
