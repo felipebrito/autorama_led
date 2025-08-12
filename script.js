@@ -192,6 +192,16 @@ class LEDRace {
                     console.log('[SERIAL] requestPort resolved:', info);
                     await this.port.open({ baudRate: 115200 });
                     console.log('[SERIAL] port opened @115200');
+                    // Tenta resetar a placa (DTR toggle) para garantir mensagem de ready
+                    try {
+                        await this.port.setSignals({ dataTerminalReady: false, requestToSend: false });
+                        await this.sleep(200);
+                        await this.port.setSignals({ dataTerminalReady: true, requestToSend: true });
+                        await this.sleep(200);
+                        console.log('[SERIAL] DTR/RTS toggled');
+                    } catch (e) {
+                        console.warn('[SERIAL] setSignals not supported or failed:', e?.message || e);
+                    }
                     this.writer = this.port.writable.getWriter();
                     if (this.serialStatus) this.serialStatus.textContent = 'Conectado';
                     // Enviar configuração inicial
@@ -313,6 +323,7 @@ class LEDRace {
 
     closeSerial() {
         try { if (this.serialSendInterval) clearInterval(this.serialSendInterval); } catch (_) {}
+        try { if (this.reader) this.reader.cancel(); } catch (_) {}
         try { if (this.reader) this.reader.releaseLock(); } catch (_) {}
         try { if (this.writer) this.writer.releaseLock(); } catch (_) {}
         try { if (this.port) this.port.close(); } catch (_) {}
@@ -320,6 +331,8 @@ class LEDRace {
         this.reader = null;
         this.writer = null;
     }
+
+    sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
     
     setupEventListeners() {
         this.btn1.addEventListener('mousedown', () => {
