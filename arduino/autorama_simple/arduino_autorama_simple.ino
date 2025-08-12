@@ -1,5 +1,5 @@
 /*
- * Arduino Autorama - Versão Ultra-Simples
+ * Arduino Autorama - Versão Ultra-Simples com Testes Visuais
  * Baseado no led_test_simple.ino que FUNCIONA
  */
 
@@ -13,10 +13,16 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, PIN_LED, NEO_GRB + NEO_KHZ
 // Estado do jogo
 float dist1 = 0.0f, dist2 = 0.0f;
 bool gameRunning = false;
+bool gameJustStarted = false;
+unsigned long gameStartTime = 0;
 
 // Buffer para receber mensagens
 String inputString = "";
 bool stringComplete = false;
+
+// Contador para testes visuais
+unsigned long lastTestTime = 0;
+int testCounter = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -51,6 +57,20 @@ void loop() {
     processMessage(inputString);
     inputString = "";
     stringComplete = false;
+  }
+  
+  // Countdown visual quando o jogo iniciar
+  if (gameJustStarted && (millis() - gameStartTime < 3000)) {
+    runCountdown();
+  } else if (gameJustStarted) {
+    gameJustStarted = false;
+    Serial.println("{\"debug\":\"Countdown concluido, jogo iniciado\"}");
+  }
+  
+  // Teste visual periódico para confirmar que está funcionando
+  if (millis() - lastTestTime > 5000) {
+    runPeriodicTest();
+    lastTestTime = millis();
   }
   
   // Demo simples se não receber mensagens
@@ -142,7 +162,16 @@ void handleState(String message) {
       end++;
     }
     float r = message.substring(start, end).toFloat();
+    bool wasRunning = gameRunning;
     gameRunning = (r != 0.0f);
+    
+    // Se o jogo acabou de iniciar
+    if (gameRunning && !wasRunning) {
+      gameJustStarted = true;
+      gameStartTime = millis();
+      Serial.println("{\"debug\":\"JOGO INICIADO - iniciando countdown visual!\"}");
+    }
+    
     Serial.print("{\"debug\":\"running setado para:\"");
     Serial.print(gameRunning ? "true" : "false");
     Serial.println("\"}");
@@ -198,6 +227,67 @@ void renderFrame() {
   Serial.println("{\"debug\":\"Carros desenhados, chamando strip.show()\"}");
   strip.show();
   Serial.println("{\"debug\":\"strip.show() executado\"}");
+}
+
+void runCountdown() {
+  static int countdownStep = 0;
+  static unsigned long lastCountdown = 0;
+  
+  if (millis() - lastCountdown > 1000) {
+    lastCountdown = millis();
+    
+    // Limpar LEDs
+    strip.clear();
+    
+    // Piscar toda a fita com cores diferentes
+    uint32_t color;
+    switch(countdownStep) {
+      case 0: // Vermelho
+        color = strip.Color(255, 0, 0);
+        Serial.println("{\"debug\":\"Countdown 3 - VERMELHO\"}");
+        break;
+      case 1: // Amarelo
+        color = strip.Color(255, 255, 0);
+        Serial.println("{\"debug\":\"Countdown 2 - AMARELO\"}");
+        break;
+      case 2: // Verde
+        color = strip.Color(0, 255, 0);
+        Serial.println("{\"debug\":\"Countdown 1 - VERDE\"}");
+        break;
+    }
+    
+    // Acender toda a fita
+    for (int i = 0; i < NUM_LEDS; i++) {
+      strip.setPixelColor(i, color);
+    }
+    strip.show();
+    
+    countdownStep++;
+    if (countdownStep >= 3) {
+      countdownStep = 0;
+    }
+  }
+}
+
+void runPeriodicTest() {
+  // Teste visual periódico para confirmar funcionamento
+  Serial.print("{\"debug\":\"Teste periodico #");
+  Serial.print(testCounter);
+  Serial.println("\"}");
+  
+  // Piscar LEDs alternados
+  strip.clear();
+  for (int i = 0; i < NUM_LEDS; i++) {
+    if (i % 2 == testCounter % 2) {
+      strip.setPixelColor(i, strip.Color(0, 0, 100)); // Azul
+    }
+  }
+  strip.show();
+  delay(100);
+  strip.clear();
+  strip.show();
+  
+  testCounter++;
 }
 
 void testLEDs() {
