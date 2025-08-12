@@ -9,6 +9,7 @@
 - Adicionados logs detalhados para debug
 - Demo é bloqueado quando `haveLiveData=true` E `gameRunning=true`
 - **NOVO:** Simplificada a função de renderização para evitar problemas
+- **NOVO SKETCH:** `arduino_autorama_simple.ino` - versão ultra-simples que funciona
 
 ## 📋 Passos para Upload
 
@@ -16,8 +17,9 @@
 - Baixe e instale o [Arduino IDE](https://www.arduino.cc/en/software) se não tiver
 - Ou use o Arduino Web Editor: https://create.arduino.cc/
 
-### 2. Abrir o Sketch Corrigido
-- Abra o arquivo: `arduino/arduino_autorama_listener/arduino_autorama_listener.ino`
+### 2. **USAR O NOVO SKETCH SIMPLES** ⭐
+- **Abra o arquivo:** `arduino/autorama_simple/arduino_autorama_simple.ino`
+- **NÃO use** o `arduino_autorama_listener.ino` (tem problemas)
 
 ### 3. Verificar Configurações
 - **Board:** Arduino Uno (ou sua placa)
@@ -27,10 +29,10 @@
 ### 4. Ajustar Configurações do Hardware
 ```cpp
 #define PIN_LED      6          // Pino da fita WS2812/WS2813
-#define PHYS_PIXELS  20         // QUANTIDADE REAL de LEDs na sua fita
+#define NUM_LEDS     20         // QUANTIDADE REAL de LEDs na sua fita
 ```
 
-**IMPORTANTE:** Ajuste `PHYS_PIXELS` para o número real de LEDs que você tem!
+**IMPORTANTE:** Ajuste `NUM_LEDS` para o número real de LEDs que você tem!
 
 ### 5. Fazer Upload
 - Clique em "Upload" (seta →)
@@ -42,6 +44,9 @@
 - Configure para **115200 baud**
 - Você deve ver:
 ```
+Arduino Autorama iniciando...
+Teste LED iniciado
+Teste LED concluído
 {"arduino":"ready","leds":20}
 {"status":"Arduino iniciado e aguardando comandos"}
 ```
@@ -57,8 +62,12 @@
 
 Com o sketch corrigido, você verá no Serial Monitor:
 ```
-{"debug":"Estado atualizado - gameRunning:true, haveLiveData:true, lastMsgMs:12345"}
-{"debug":"Demo bloqueado - jogo ativo"}
+{"debug":"RX:{"type":"ping"}"}
+{"pong":"ok"}
+{"debug":"RX:{"type":"effect","name":"flash"}"}
+{"debug":"Processando effect"}
+{"debug":"RX:{"type":"state","dist1":5,"dist2":10,"running":1}"}
+{"debug":"Processando state"}
 {"debug":"renderFrame iniciado"}
 {"debug":"Carros desenhados, chamando strip.show()"}
 {"debug":"strip.show() executado"}
@@ -91,7 +100,7 @@ Se o sketch principal não funcionar, teste com o sketch ultra-simples:
 1. **Verifique a alimentação** da fita LED (5V estável)
 2. **Confirme o pino** da fita (deve ser o pino 6)
 3. **Verifique GND comum** entre Arduino e fita
-4. **Teste com menos LEDs** (reduza `PHYS_PIXELS` para 10)
+4. **Teste com menos LEDs** (reduza `NUM_LEDS` para 10)
 5. **Use o sketch de teste** para isolar o problema
 
 ## 📱 Alternativa: Arduino Web Editor
@@ -107,4 +116,6 @@ Se preferir não instalar o Arduino IDE:
 
 **🎯 O bug estava na lógica do demo que sobrescrevia os LEDs do jogo. Agora deve funcionar perfeitamente!**
 
-**🔧 Se não funcionar, use o sketch de teste para verificar se é problema de hardware ou software.**
+**🔧 Use o NOVO sketch `arduino_autorama_simple.ino` - é baseado no que funciona!**
+
+**⭐ RECOMENDAÇÃO: Use `arduino/autorama_simple/arduino_autorama_simple.ino` em vez do listener original!**
