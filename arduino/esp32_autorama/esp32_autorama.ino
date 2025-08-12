@@ -11,6 +11,9 @@
 #include <ArduinoJson.h>
 #include <Adafruit_NeoPixel.h>
 
+// Verificar se a biblioteca está funcionando
+#define NEO_PIXEL_TEST
+
 // CONFIGURAÇÕES
 #define PIN_LED      2          // GPIO 2 para fita LED
 #define PIN_BTN1     4          // GPIO 4 para botão Jogador 1
@@ -38,6 +41,10 @@ bool flag_sw1 = true, flag_sw2 = true; // Edge detection como no original
 bool btn1LastState = false, btn2LastState = false;
 unsigned long lastBtn1Press = 0, lastBtn2Press = 0;
 
+// DEBOUNCE
+unsigned long lastBtn1Debounce = 0, lastBtn2Debounce = 0;
+const unsigned long DEBOUNCE_DELAY = 150; // 150ms de debounce
+
 // CONFIGURAÇÕES FÍSICAS
 float acel = 0.2f;      // Aceleração
 float kf = 0.015f;      // Atrito
@@ -61,9 +68,21 @@ void setup() {
   Serial.println("Inicializando...");
   
   // INICIALIZAR LEDS
+  Serial.printf("Inicializando LEDs: PIN=%d, NUM_LEDS=%d\n", PIN_LED, NUM_LEDS);
   strip.begin();
   strip.show();
-  Serial.println("✓ LEDs inicializados");
+  Serial.printf("✓ LEDs inicializados - Total: %d pixels\n", strip.numPixels());
+  
+  // Teste rápido de inicialização
+  Serial.println("Teste rápido de inicialização...");
+  for (int i = 0; i < 5; i++) {
+    strip.setPixelColor(i, strip.Color(255, 0, 0));
+  }
+  strip.show();
+  delay(500);
+  strip.clear();
+  strip.show();
+  Serial.println("✓ Teste de inicialização concluído");
   
   // CONFIGURAR BOTÕES
   pinMode(PIN_BTN1, INPUT_PULLUP);
@@ -135,8 +154,8 @@ void loop() {
     static unsigned long lastDebug = 0;
     if (millis() - lastDebug > 1000) {
       lastDebug = millis();
-      Serial.printf("Jogo: P1(%.1f, %.1f, %d) P2(%.1f, %.1f, %d)\n", 
-                   dist1, vel1, loop1, dist2, vel2, loop2);
+      Serial.printf("Jogo: P1(%.1f, %.1f, %d) P2(%.1f, %.1f, %d) | Debounce: %lu ms\n", 
+                   dist1, vel1, loop1, dist2, vel2, loop2, DEBOUNCE_DELAY);
     }
   }
 }
@@ -231,9 +250,58 @@ void processMessage(String message) {
     strip.clear();
     strip.show();
     Serial.println("✓ LEDs limpos");
+  } else if (message.equalsIgnoreCase("teste")) {
+    Serial.println("✓ Comando TESTE detectado");
+    // Teste simples: acender todos os LEDs vermelhos
+    for (int i = 0; i < NUM_LEDS; i++) {
+      strip.setPixelColor(i, strip.Color(255, 0, 0));
+    }
+    strip.show();
+    Serial.printf("✓ Todos os %d LEDs acendidos em vermelho\n", NUM_LEDS);
+    delay(2000);
+    strip.clear();
+    strip.show();
+  } else if (message.equalsIgnoreCase("btn1")) {
+    Serial.println("✓ Botão Jogador 1 via browser");
+    vel1 += acel;
+    Serial.printf("Jogador 1 acelerou: vel=%.2f\n", vel1);
+    
+    // Feedback visual imediato
+    strip.clear();
+    for (int i = 0; i < NUM_LEDS; i++) {
+      strip.setPixelColor(i, strip.Color(255, 0, 0)); // Vermelho
+    }
+    strip.show();
+    delay(200);
+    strip.clear();
+    strip.show();
+    
+  } else if (message.equalsIgnoreCase("btn2")) {
+    Serial.println("✓ Botão Jogador 2 via browser");
+    vel2 += acel;
+    Serial.printf("Jogador 2 acelerou: vel=%.2f\n", vel2);
+    
+    // Feedback visual imediato
+    strip.clear();
+    for (int i = 0; i < NUM_LEDS; i++) {
+      strip.setPixelColor(i, strip.Color(0, 255, 0)); // Verde
+    }
+    strip.show();
+    delay(200);
+    strip.clear();
+    strip.show();
   } else if (message.equalsIgnoreCase("ajuda")) {
     Serial.println("✓ Comando AJUDA detectado");
     showHelp();
+  } else if (message.startsWith("debounce")) {
+    // Comando: debounce 200 (ajusta debounce para 200ms)
+    int newDelay = message.substring(9).toInt();
+    if (newDelay > 0 && newDelay < 1000) {
+      DEBOUNCE_DELAY = newDelay;
+      Serial.printf("✓ Debounce ajustado para %d ms\n", DEBOUNCE_DELAY);
+    } else {
+      Serial.printf("Debounce atual: %lu ms\n", DEBOUNCE_DELAY);
+    }
   } else if (message.startsWith("{") && message.endsWith("}")) {
     // COMANDOS JSON
     processJSON(message);
@@ -354,7 +422,17 @@ void testLEDs() {
 
 void testJogador1() {
   Serial.println("Testando Jogador 1 (vermelho)...");
+  Serial.printf("NUM_LEDS: %d, PIN_LED: %d\n", NUM_LEDS, PIN_LED);
   
+  // Teste simples primeiro
+  Serial.println("Teste 1: LED único vermelho");
+  strip.clear();
+  strip.setPixelColor(0, strip.Color(255, 0, 0));
+  strip.show();
+  delay(1000);
+  
+  // Teste movimento
+  Serial.println("Teste 2: Movimento com rastro");
   for (int pos = 0; pos < NUM_LEDS; pos++) {
     strip.clear();
     strip.setPixelColor(pos, strip.Color(255, 0, 0));
@@ -368,8 +446,18 @@ void testJogador1() {
     }
     
     strip.show();
-    delay(100);
+    Serial.printf("Pos: %d, LEDs ativos: %d\n", pos, strip.numPixels());
+    delay(200);
   }
+  
+  // Manter último estado por 2 segundos
+  Serial.println("Teste 3: Estado final");
+  strip.clear();
+  for (int i = 0; i < NUM_LEDS; i++) {
+    strip.setPixelColor(i, strip.Color(255, 0, 0));
+  }
+  strip.show();
+  delay(2000);
   
   strip.clear();
   strip.show();
@@ -528,26 +616,37 @@ void showHelp() {
   Serial.println("start     - Inicia o jogo");
   Serial.println("stop      - Para o jogo");
   Serial.println("limpar    - Limpa todos os LEDs");
+  Serial.println("teste     - Teste simples dos LEDs");
+  Serial.println("btn1      - Acelerar Jogador 1 (browser)");
+  Serial.println("btn2      - Acelerar Jogador 2 (browser)");
+  Serial.println("debounce 200 - Ajusta debounce (ms)");
   Serial.println("ajuda     - Mostra esta ajuda");
   Serial.println("========================\n");
 }
 
 // ===== FUNÇÕES DO JOGO =====
 void readButtons() {
-  // Edge detection como no código original
+  // DEBOUNCE Jogador 1
   if ((flag_sw1 == 1) && (digitalRead(PIN_BTN1) == 0)) {
-    flag_sw1 = 0;
-    vel1 += acel;
-    Serial.println("Botão Jogador 1 pressionado!");
+    if (millis() - lastBtn1Debounce > DEBOUNCE_DELAY) {
+      flag_sw1 = 0;
+      vel1 += acel;
+      lastBtn1Debounce = millis();
+      Serial.println("Botão Jogador 1 pressionado!");
+    }
   }
   if ((flag_sw1 == 0) && (digitalRead(PIN_BTN1) == 1)) {
     flag_sw1 = 1;
   }
 
+  // DEBOUNCE Jogador 2
   if ((flag_sw2 == 1) && (digitalRead(PIN_BTN2) == 0)) {
-    flag_sw2 = 0;
-    vel2 += acel;
-    Serial.println("Botão Jogador 2 pressionado!");
+    if (millis() - lastBtn2Debounce > DEBOUNCE_DELAY) {
+      flag_sw2 = 0;
+      vel2 += acel;
+      lastBtn2Debounce = millis();
+      Serial.println("Botão Jogador 2 pressionado!");
+    }
   }
   if ((flag_sw2 == 0) && (digitalRead(PIN_BTN2) == 1)) {
     flag_sw2 = 1;
@@ -690,6 +789,17 @@ String getMainPage() {
   html += "<button onclick=\"sendCommand('start')\">Start</button>";
   html += "<button onclick=\"sendCommand('stop')\">Stop</button>";
   html += "<button onclick=\"sendCommand('limpar')\">Limpar</button>";
+  html += "<button onclick=\"sendCommand('teste')\">Teste LEDs</button>";
+  html += "</div>";
+  
+  html += "<h3>Controle dos Jogadores (Browser)</h3>";
+  html += "<div style=\"margin: 20px 0;\">";
+  html += "<button onclick=\"sendCommand('btn1')\" style=\"background: #ff4444; font-size: 18px; padding: 15px 30px; margin: 10px;\">🚗 ACELERAR JOGADOR 1</button>";
+  html += "<button onclick=\"sendCommand('btn2')\" style=\"background: #44ff44; font-size: 18px; padding: 15px 30px; margin: 10px;\">🏎️ ACELERAR JOGADOR 2</button>";
+  html += "</div>";
+  
+  html += "<div style=\"background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;\">";
+  html += "<strong>💡 Dica:</strong> Use estes botões para testar se o problema é nos botões físicos ou no código dos LEDs.";
   html += "</div>";
   html += "<h3>Estado do Jogo</h3>";
   html += "<div>";
@@ -784,7 +894,22 @@ String getMainPage() {
   html += "window.onload = function() {";
   html += "  initLEDs();";
   html += "  log('Pagina carregada');";
+  html += "  log('💡 Use Q para Jogador 1, P para Jogador 2');";
   html += "};";
+  
+  html += "// Teclas de atalho";
+  html += "document.addEventListener('keydown', function(event) {";
+  html += "  if (event.key.toLowerCase() === 'q') {";
+  html += "    event.preventDefault();";
+  html += "    sendCommand('btn1');";
+  html += "    log('Tecla Q pressionada - Jogador 1');";
+  html += "  }";
+  html += "  if (event.key.toLowerCase() === 'p') {";
+  html += "    event.preventDefault();";
+  html += "    sendCommand('btn2');";
+  html += "    log('Tecla P pressionada - Jogador 2');";
+  html += "  }";
+  html += "});";
   html += "</script>";
   html += "</body></html>";
   return html;
