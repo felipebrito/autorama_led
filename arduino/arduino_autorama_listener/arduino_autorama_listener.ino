@@ -57,29 +57,52 @@ bool hasType(const char* src, const char* typeName) {
 void applyConfigFromJson(const char* json) {
   uint16_t v;
   if (parseUInt16(json, "\"maxLed\"", v)) {
-    // Nunca ultrapassar a quantidade FÍSICA de LEDs conectados
-    uint16_t limit = (PHYS_PIXELS < MAX_PIXELS) ? PHYS_PIXELS : MAX_PIXELS;
-    numPixels = clampT<uint16_t>(v, 1, limit);
+    numPixels = clampT<uint16_t>(v, 1, MAX_PIXELS);
+    Serial.print("{\"debug\":\"maxLed setado para:\"");
+    Serial.print(numPixels);
+    Serial.println("\"}");
   }
   float tail;
   if (parseNumber(json, "\"tail\"", tail)) {
     tailLen = (uint8_t)clampT<int>((int)tail, 0, 20);
+    Serial.print("{\"debug\":\"tail setado para:\"");
+    Serial.print(tailLen);
+    Serial.println("\"}");
   }
 }
 
 void applyStateFromJson(const char* json) {
   float v;
-  if (parseNumber(json, "\"dist1\"", v)) dist1 = v;
-  if (parseNumber(json, "\"dist2\"", v)) dist2 = v;
+  if (parseNumber(json, "\"dist1\"", v)) {
+    dist1 = v;
+    Serial.print("{\"debug\":\"dist1:\"");
+    Serial.print(dist1);
+    Serial.println("\"}");
+  }
+  if (parseNumber(json, "\"dist2\"", v)) {
+    dist2 = v;
+    Serial.print("{\"debug\":\"dist2:\"");
+    Serial.print(dist2);
+    Serial.println("\"}");
+  }
   // running opcional
   if (strstr(json, "\"running\"")) {
     float r = 0;
     if (parseNumber(json, "\"running\"", r)) {
       gameRunning = (r != 0.0f);
+      Serial.print("{\"debug\":\"running setado para:\"");
+      Serial.print(gameRunning ? "true" : "false");
+      Serial.println("\"}");
     } else {
       // se vier como booleano true/false textual, faz fallback simples
-      if (strstr(json, "\"running\":true")) gameRunning = true;
-      if (strstr(json, "\"running\":false")) gameRunning = false;
+      if (strstr(json, "\"running\":true")) {
+        gameRunning = true;
+        Serial.println("{\"debug\":\"running fallback para true\"}");
+      }
+      if (strstr(json, "\"running\":false")) {
+        gameRunning = false;
+        Serial.println("{\"debug\":\"running fallback para false\"}");
+      }
     }
   }
 }
@@ -96,6 +119,15 @@ void renderFrame() {
   // índices atuais (alinhados à pista lógica)
   int i1 = ((long)floor(dist1) % numPixels + numPixels) % numPixels;
   int i2 = ((long)floor(dist2) % numPixels + numPixels) % numPixels;
+
+  // DEBUG: Log das posições calculadas
+  Serial.print("{\"debug\":\"renderFrame - pos1:\"");
+  Serial.print(i1);
+  Serial.print(", pos2:\"");
+  Serial.print(i2);
+  Serial.print(", numPixels:\"");
+  Serial.print(numPixels);
+  Serial.println("\"}");
 
   drawCar((uint16_t)i1, tailLen, colorP1);
   drawCar((uint16_t)i2, tailLen, colorP2);
@@ -138,13 +170,22 @@ void loop() {
     if (c == '\n') {
       lineBuf[clampT<uint16_t>(lineLen, 0, RX_BUF-1)] = '\0';
       if (lineLen > 0) {
+        // DEBUG: Log de todas as mensagens recebidas
+        Serial.print("{\"debug\":\"RX:\"");
+        Serial.print(lineBuf);
+        Serial.println("\"}");
+        
         if (hasType(lineBuf, "config")) {
+          Serial.println("{\"debug\":\"Processando config\"}");
           applyConfigFromJson(lineBuf);
         } else if (hasType(lineBuf, "state")) {
+          Serial.println("{\"debug\":\"Processando state\"}");
           applyStateFromJson(lineBuf);
           renderFrame();
           haveLiveData = true;
           lastMsgMs = millis();
+        } else {
+          Serial.println("{\"debug\":\"Tipo nao reconhecido\"}");
         }
       }
       lineLen = 0;
