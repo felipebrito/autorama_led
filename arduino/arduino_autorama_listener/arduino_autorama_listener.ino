@@ -24,6 +24,17 @@ uint32_t colorP1   = strip.Color(255, 0, 0);   // carro 1 (vermelho)
 uint32_t colorP2   = strip.Color(0, 255, 0);   // carro 2 (verde)
 uint32_t colorBG   = strip.Color(0, 0, 0);     // fundo
 
+// DEBUG: Log das cores definidas
+void logColors() {
+  Serial.print("{\"debug\":\"Cores definidas - colorP1:\"");
+  Serial.print(colorP1);
+  Serial.print(", colorP2:\"");
+  Serial.print(colorP2);
+  Serial.print(", colorBG:\"");
+  Serial.print(colorBG);
+  Serial.println("\"}");
+}
+
 // Recepção serial (NDJSON: 1 JSON por linha)
 static const uint16_t RX_BUF = 512;  // Aumentado para mensagens maiores
 char lineBuf[RX_BUF];
@@ -119,9 +130,25 @@ void applyStateFromJson(const char* json) {
 }
 
 void drawCar(uint16_t idx, uint8_t tail, uint32_t color) {
+  // DEBUG: Log dos parâmetros
+  Serial.print("{\"debug\":\"drawCar - idx:\"");
+  Serial.print(idx);
+  Serial.print(", tail:\"");
+  Serial.print(tail);
+  Serial.print(", color:\"");
+  Serial.print(color);
+  Serial.println("\"}");
+  
   for (uint8_t i = 0; i <= tail; i++) {
     uint16_t p = (idx + i) % numPixels;
     strip.setPixelColor(p, color);
+    
+    // DEBUG: Log de cada pixel
+    Serial.print("{\"debug\":\"Pixel \"");
+    Serial.print(p);
+    Serial.print(" setado com cor \"");
+    Serial.print(color);
+    Serial.println("\"}");
   }
 }
 
@@ -138,12 +165,25 @@ void renderFrame() {
   Serial.print(i2);
   Serial.print(", numPixels:\"");
   Serial.print(numPixels);
+  Serial.print(", dist1:\"");
+  Serial.print(dist1);
+  Serial.print(", dist2:\"");
+  Serial.print(dist2);
   Serial.println("\"}");
 
+  // DEBUG: Log antes de desenhar
+  Serial.println("{\"debug\":\"Desenhando carros...\"}");
+  
   drawCar((uint16_t)i1, tailLen, colorP1);
   drawCar((uint16_t)i2, tailLen, colorP2);
 
+  // DEBUG: Log após desenhar
+  Serial.println("{\"debug\":\"Carros desenhados, chamando strip.show()\"}");
+  
   strip.show();
+  
+  // DEBUG: Log após show
+  Serial.println("{\"debug\":\"strip.show() executado\"}");
 }
 
 void showColor(uint8_t r, uint8_t g, uint8_t b, uint16_t count, uint16_t delayMs) {
@@ -168,6 +208,10 @@ void setup() {
   Serial.begin(115200);
   strip.begin();
   strip.show();
+  
+  // DEBUG: Log das cores
+  logColors();
+  
   selfTest();
   Serial.println("{\"arduino\":\"ready\",\"leds\":20}");
   Serial.println("{\"status\":\"Arduino iniciado e aguardando comandos\"}");
