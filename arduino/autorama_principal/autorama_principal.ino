@@ -330,11 +330,11 @@ void startSimulation() {
   strip.show();
   
   Serial.println("1. Enviando CONFIG...");
-  processMessage("{\"type\":\"config\",\"maxLed\":20,\"loopMax\":5,\"acel\":0.2,\"kf\":0.015,\"kg\":0.003,\"tail\":3}");
+  Serial.println("{\"type\":\"config\",\"maxLed\":20,\"loopMax\":5,\"acel\":0.2,\"kf\":0.015,\"kg\":0.003,\"tail\":3}");
   delay(500);
   
   Serial.println("2. Iniciando JOGO...");
-  processMessage("{\"type\":\"state\",\"dist1\":0,\"dist2\":0,\"speed1\":0,\"speed2\":0,\"loop1\":0,\"loop2\":0,\"leader\":0,\"running\":1}");
+  Serial.println("{\"type\":\"state\",\"dist1\":0,\"dist2\":0,\"speed1\":0,\"speed2\":0,\"loop1\":0,\"loop2\":0,\"leader\":0,\"running\":1}");
   delay(1000);
   
   Serial.println("3. Simulando movimento dos carros...");
@@ -344,14 +344,14 @@ void startSimulation() {
     float d2 = step * 1.2;
     
     String stateMsg = "{\"type\":\"state\",\"dist1\":" + String(d1) + ",\"dist2\":" + String(d2) + ",\"speed1\":1.5,\"speed2\":1.2,\"loop1\":" + (step/5) + ",\"loop2\":" + (step/6) + ",\"leader\":" + (d1 > d2 ? 1 : 2) + ",\"running\":1}";
-    processMessage(stateMsg);
+    Serial.println(stateMsg);
     
     Serial.print("Step "); Serial.print(step); Serial.print(": d1="); Serial.print(d1); Serial.print(", d2="); Serial.println(d2);
     delay(300);
   }
   
   Serial.println("4. Finalizando jogo...");
-  processMessage("{\"type\":\"state\",\"dist1\":30,\"dist2\":24,\"speed1\":0,\"speed2\":0,\"loop1\":1,\"loop2\":0,\"leader\":1,\"running\":0}");
+  Serial.println("{\"type\":\"state\",\"dist1\":30,\"dist2\":24,\"speed1\":0,\"speed2\":0,\"loop1\":1,\"loop2\":0,\"leader\":1,\"running\":0}");
   
   // Indicador visual de conclusão
   for (int i = 0; i < NUM_LEDS; i++) {
