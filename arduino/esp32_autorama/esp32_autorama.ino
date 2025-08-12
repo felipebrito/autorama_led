@@ -43,7 +43,7 @@ unsigned long lastBtn1Press = 0, lastBtn2Press = 0;
 
 // DEBOUNCE
 unsigned long lastBtn1Debounce = 0, lastBtn2Debounce = 0;
-const unsigned long DEBOUNCE_DELAY = 150; // 150ms de debounce
+unsigned long DEBOUNCE_DELAY = 150; // 150ms de debounce (ajustável)
 
 // CONFIGURAÇÕES FÍSICAS
 float acel = 0.2f;      // Aceleração
