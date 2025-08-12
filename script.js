@@ -181,6 +181,9 @@ class LEDRace {
         this.reader = null;
         this.readBuffer = '';
         this.serialSendInterval = null;
+        this.serialInfo = document.getElementById('serialInfo');
+        this.listBtn = document.getElementById('listBtn');
+        this.disconnectBtn = document.getElementById('disconnectBtn');
         if (this.connectBtn) {
             this.connectBtn.addEventListener('click', async () => {
                 console.log('[UI] connectBtn clicked');
@@ -190,36 +193,11 @@ class LEDRace {
                     this.port = await navigator.serial.requestPort();
                     const info = this.port.getInfo ? this.port.getInfo() : {};
                     console.log('[SERIAL] requestPort resolved:', info);
-                    // Se a porta já estiver aberta, evite open() duplicado
-                    if (this.port.readable || this.port.writable) {
-                        console.warn('[SERIAL] port already open, skipping open()');
-                    } else {
-                        await this.port.open({ baudRate: 115200 });
-                        console.log('[SERIAL] port opened @115200');
-                    }
-                    // Tenta resetar a placa (DTR toggle) para garantir mensagem de ready
-                    try {
-                        await this.port.setSignals({ dataTerminalReady: false, requestToSend: false });
-                        await this.sleep(200);
-                        await this.port.setSignals({ dataTerminalReady: true, requestToSend: true });
-                        await this.sleep(200);
-                        console.log('[SERIAL] DTR/RTS toggled');
-                    } catch (e) {
-                        console.warn('[SERIAL] setSignals not supported or failed:', e?.message || e);
-                    }
-                    this.writer = this.port.writable.getWriter();
-                    if (this.serialStatus) this.serialStatus.textContent = 'Conectado';
-                    // Enviar configuração inicial
-                    await this.sendConfigToArduino();
-                    console.log('[SERIAL] config sent');
-                    // Iniciar leitura para debug/handshake
-                    this.startSerialReadLoop();
-                    // Iniciar envio periódico de estado
-                    this.startSerialLoop();
-                    console.log('[SERIAL] state loop started');
+                    await this.openSelectedPort(this.port);
                 } catch (e) {
                     console.error('[ERROR] Serial connect error:', e?.name, e?.message || e);
                     if (this.serialStatus) this.serialStatus.textContent = 'Falha ao conectar';
+                    if (this.serialInfo) this.serialInfo.textContent = 'Possível porta ocupada. Feche o Serial Monitor do Arduino IDE ou outro app que use a mesma porta e tente novamente.';
                 }
             });
         }
@@ -249,6 +227,56 @@ class LEDRace {
                 if (this.serialInfo) this.serialInfo.textContent = 'Conexão encerrada pelo usuário';
             });
         }
+
+        // Eventos de plug/unplug → tentativa de autoconectar a uma porta já autorizada
+        navigator.serial.addEventListener('connect', async () => {
+            console.log('[SERIAL] device connected');
+            if (!this.port) {
+                try {
+                    const ports = await navigator.serial.getPorts();
+                    if (ports && ports.length) {
+                        await this.openSelectedPort(ports[0]);
+                    }
+                } catch (e) {
+                    console.warn('[SERIAL] auto-connect failed:', e?.message || e);
+                }
+            }
+        });
+        navigator.serial.addEventListener('disconnect', () => {
+            console.warn('[SERIAL] device disconnected');
+            this.closeSerial();
+            if (this.serialStatus) this.serialStatus.textContent = 'Desconectado';
+            if (this.serialInfo) this.serialInfo.textContent = 'Dispositivo desconectado';
+        });
+    }
+
+    async openSelectedPort(port) {
+        if (!port) throw new Error('No port provided');
+        // Se já estiver aberta, segue direto
+        if (!port.readable && !port.writable) {
+            await port.open({ baudRate: 115200 });
+            console.log('[SERIAL] port opened @115200');
+        } else {
+            console.warn('[SERIAL] port already open, reusing instance');
+        }
+        // DTR/RTS toggle para reset
+        try {
+            await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+            await this.sleep(150);
+            await port.setSignals({ dataTerminalReady: true, requestToSend: true });
+            await this.sleep(150);
+            console.log('[SERIAL] DTR/RTS toggled');
+        } catch (e) {
+            console.warn('[SERIAL] setSignals not supported or failed:', e?.message || e);
+        }
+        this.port = port;
+        this.writer = this.port.writable.getWriter();
+        if (this.serialStatus) this.serialStatus.textContent = 'Conectado';
+        await this.sendConfigToArduino();
+        console.log('[SERIAL] config sent');
+        this.startSerialReadLoop();
+        this.startSerialLoop();
+        console.log('[SERIAL] state loop started');
     }
 
     async sendLine(obj) {
