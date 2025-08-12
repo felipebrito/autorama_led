@@ -96,6 +96,30 @@ void processMessage(String message) {
   Serial.print(message);
   Serial.println("'");
   
+  // DEBUG DETALHADO: Mostrar cada caractere individualmente
+  Serial.print("DEBUG: Mensagem recebida [");
+  for (int i = 0; i < message.length(); i++) {
+    char c = message.charAt(i);
+    if (c >= 32 && c <= 126) {
+      Serial.print(c); // Caractere visível
+    } else {
+      Serial.print("\\x"); // Caractere invisível
+      if (c < 16) Serial.print("0");
+      Serial.print(c, HEX);
+    }
+  }
+  Serial.println("]");
+  
+  Serial.print("DEBUG: Tamanho da mensagem: ");
+  Serial.println(message.length());
+  
+  Serial.print("DEBUG: Primeiro caractere (ASCII): ");
+  if (message.length() > 0) {
+    Serial.println((int)message.charAt(0));
+  } else {
+    Serial.println("MENSAGEM VAZIA!");
+  }
+  
   // DEBUG: Verificar se é JSON válido
   if (message.startsWith("{") && message.endsWith("}")) {
     Serial.println("✓ Mensagem parece ser JSON válido");
@@ -108,22 +132,22 @@ void processMessage(String message) {
     Serial.println("Comando DEMO detectado");
     runDemoAnimation();
   } else if (message.equalsIgnoreCase("jogador1")) {
-    Serial.println("Comando JOGADOR1 detectado");
+    Serial.println("✓ Comando JOGADOR1 detectado");
     testJogador1();
   } else if (message.equalsIgnoreCase("jogador2")) {
-    Serial.println("Comando JOGADOR2 detectado");
+    Serial.println("✓ Comando JOGADOR2 detectado");
     testJogador2();
   } else if (message.equalsIgnoreCase("simular")) {
-    Serial.println("Comando SIMULAR detectado");
+    Serial.println("✓ Comando SIMULAR detectado");
     startSimulation();
   } else if (message.equalsIgnoreCase("parar")) {
-    Serial.println("Comando PARAR detectado");
+    Serial.println("✓ Comando PARAR detectado");
     stopTestMode();
   } else if (message.equalsIgnoreCase("ajuda") || message.equalsIgnoreCase("help")) {
-    Serial.println("Comando AJUDA detectado");
+    Serial.println("✓ Comando AJUDA detectado");
     showHelp();
   } else if (message.equalsIgnoreCase("limpar")) {
-    Serial.println("Comando LIMPAR detectado");
+    Serial.println("✓ Comando LIMPAR detectado");
     Serial.println("Executando comando LIMPAR...");
     strip.clear();
     strip.show();
@@ -141,20 +165,13 @@ void processMessage(String message) {
       delay(100);
     }
   } else if (message.equalsIgnoreCase("teste")) {
-    Serial.println("Comando TESTE detectado");
+    Serial.println("✓ Comando TESTE detectado");
     testAllLEDs();
   } else if (message.indexOf("\"type\":\"config\"") >= 0) {
     Serial.println("✓ Comando CONFIG detectado");
     Serial.println("Chamando handleConfig...");
     handleConfig(message);
     Serial.println("✓ handleConfig concluído");
-  } else if (message.indexOf("\"type\":\"state\"") >= 0) {
-    Serial.println("✓ Comando STATE detectado");
-    Serial.println("Chamando handleState...");
-    handleState(message);
-    Serial.println("Chamando renderFrame...");
-    renderFrame();
-    Serial.println("✓ renderFrame concluído");
   } else if (message.indexOf("\"type\":\"effect\"") >= 0) {
     Serial.println("✓ Comando EFFECT detectado");
     Serial.println("Chamando handleEffect...");
