@@ -8,6 +8,7 @@
 - Demo agora só roda quando não há dados vivos OU jogo não está ativo
 - Adicionados logs detalhados para debug
 - Demo é bloqueado quando `haveLiveData=true` E `gameRunning=true`
+- **NOVO:** Simplificada a função de renderização para evitar problemas
 
 ## 📋 Passos para Upload
 
@@ -58,7 +59,32 @@ Com o sketch corrigido, você verá no Serial Monitor:
 ```
 {"debug":"Estado atualizado - gameRunning:true, haveLiveData:true, lastMsgMs:12345"}
 {"debug":"Demo bloqueado - jogo ativo"}
+{"debug":"renderFrame iniciado"}
+{"debug":"Carros desenhados, chamando strip.show()"}
+{"debug":"strip.show() executado"}
 ```
+
+## 🆘 Se Ainda Não Funcionar - Teste de Hardware
+
+### Sketch de Teste Ultra-Simples
+Se o sketch principal não funcionar, teste com o sketch ultra-simples:
+
+1. **Abra:** `arduino/led_test_simple/led_test_simple.ino`
+2. **Faça upload** para o Arduino
+3. **Abra Serial Monitor** (115200 baud)
+4. **Digite comandos simples:**
+   - `r` = todos vermelhos
+   - `g` = todos verdes  
+   - `b` = todos azuis
+   - `w` = todos brancos
+   - `c` = limpar
+   - `1`, `2`, `3` = LEDs individuais
+   - `t` = teste sequencial
+
+### O que esperar:
+- **Ao ligar:** Sequência RGB automática
+- **Comandos:** Resposta imediata dos LEDs
+- **Serial:** Mensagens de confirmação
 
 ## ❌ Se Ainda Não Funcionar
 
@@ -66,6 +92,7 @@ Com o sketch corrigido, você verá no Serial Monitor:
 2. **Confirme o pino** da fita (deve ser o pino 6)
 3. **Verifique GND comum** entre Arduino e fita
 4. **Teste com menos LEDs** (reduza `PHYS_PIXELS` para 10)
+5. **Use o sketch de teste** para isolar o problema
 
 ## 📱 Alternativa: Arduino Web Editor
 
@@ -79,3 +106,5 @@ Se preferir não instalar o Arduino IDE:
 ---
 
 **🎯 O bug estava na lógica do demo que sobrescrevia os LEDs do jogo. Agora deve funcionar perfeitamente!**
+
+**🔧 Se não funcionar, use o sketch de teste para verificar se é problema de hardware ou software.**
