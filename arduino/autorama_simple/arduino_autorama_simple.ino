@@ -1,6 +1,7 @@
 /*
  * Arduino Autorama - Versão Ultra-Simples com Testes Visuais
  * Baseado no led_test_simple.ino que FUNCIONA
+ * Padrões visuais únicos para cada comando - não precisa de Serial Monitor
  */
 
 #include <Adafruit_NeoPixel.h>
@@ -28,16 +29,23 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
   
-  Serial.println("Arduino Autorama iniciando...");
-  
   strip.begin();
   strip.show(); // Limpar LEDs
   
-  // Teste visual de inicialização
+  // Teste visual de inicialização - SEQUÊNCIA RGB
   testLEDs();
   
-  Serial.println("{\"arduino\":\"ready\",\"leds\":20}");
-  Serial.println("{\"status\":\"Arduino iniciado e aguardando comandos\"}");
+  // Sinal de "pronto" - PISCAR VERDE 3x
+  for (int flash = 0; flash < 3; flash++) {
+    for (int i = 0; i < NUM_LEDS; i++) {
+      strip.setPixelColor(i, strip.Color(0, 255, 0));
+    }
+    strip.show();
+    delay(200);
+    strip.clear();
+    strip.show();
+    delay(200);
+  }
 }
 
 void loop() {
@@ -64,7 +72,6 @@ void loop() {
     runCountdown();
   } else if (gameJustStarted) {
     gameJustStarted = false;
-    Serial.println("{\"debug\":\"Countdown concluido, jogo iniciado\"}");
   }
   
   // Teste visual periódico para confirmar que está funcionando
@@ -82,10 +89,6 @@ void loop() {
 }
 
 void processMessage(String message) {
-  Serial.print("{\"debug\":\"RX:\"");
-  Serial.print(message);
-  Serial.println("\"}");
-  
   // Verificar tipo de mensagem
   if (message.indexOf("\"type\":\"config\"") >= 0) {
     handleConfig(message);
@@ -96,26 +99,24 @@ void processMessage(String message) {
     handleEffect();
   } else if (message.indexOf("\"type\":\"ping\"") >= 0) {
     handlePing();
-  } else {
-    Serial.println("{\"debug\":\"Tipo nao reconhecido\"}");
   }
 }
 
 void handleConfig(String message) {
-  Serial.println("{\"debug\":\"Processando config\"}");
-  // Piscar verde para confirmar
-  for (int i = 0; i < NUM_LEDS; i++) {
-    strip.setPixelColor(i, strip.Color(0, 100, 0));
+  // PADRÃO VISUAL: PISCAR VERDE 2x (config recebida)
+  for (int flash = 0; flash < 2; flash++) {
+    for (int i = 0; i < NUM_LEDS; i++) {
+      strip.setPixelColor(i, strip.Color(0, 255, 0));
+    }
+    strip.show();
+    delay(150);
+    strip.clear();
+    strip.show();
+    delay(150);
   }
-  strip.show();
-  delay(200);
-  strip.clear();
-  strip.show();
 }
 
 void handleState(String message) {
-  Serial.println("{\"debug\":\"Processando state\"}");
-  
   // Extrair dist1
   int start = message.indexOf("\"dist1\":");
   if (start >= 0) {
@@ -128,9 +129,6 @@ void handleState(String message) {
       end++;
     }
     dist1 = message.substring(start, end).toFloat();
-    Serial.print("{\"debug\":\"dist1:\"");
-    Serial.print(dist1);
-    Serial.println("\"}");
   }
   
   // Extrair dist2
@@ -145,9 +143,6 @@ void handleState(String message) {
       end++;
     }
     dist2 = message.substring(start, end).toFloat();
-    Serial.print("{\"debug\":\"dist2:\"");
-    Serial.print(dist2);
-    Serial.println("\"}");
   }
   
   // Extrair running
@@ -169,54 +164,53 @@ void handleState(String message) {
     if (gameRunning && !wasRunning) {
       gameJustStarted = true;
       gameStartTime = millis();
-      Serial.println("{\"debug\":\"JOGO INICIADO - iniciando countdown visual!\"}");
+      // PADRÃO VISUAL: PISCAR BRANCO 3x (jogo iniciado)
+      for (int flash = 0; flash < 3; flash++) {
+        for (int i = 0; i < NUM_LEDS; i++) {
+          strip.setPixelColor(i, strip.Color(255, 255, 255));
+        }
+        strip.show();
+        delay(100);
+        strip.clear();
+        strip.show();
+        delay(100);
+      }
     }
-    
-    Serial.print("{\"debug\":\"running setado para:\"");
-    Serial.print(gameRunning ? "true" : "false");
-    Serial.println("\"}");
   }
 }
 
 void handleEffect() {
-  Serial.println("{\"debug\":\"Processando effect\"}");
-  // Flash branco em todos os LEDs
+  // PADRÃO VISUAL: FLASH BRANCO RÁPIDO (effect recebido)
   for (int i = 0; i < NUM_LEDS; i++) {
-    strip.setPixelColor(i, strip.Color(80, 80, 80));
+    strip.setPixelColor(i, strip.Color(255, 255, 255));
   }
   strip.show();
-  delay(120);
+  delay(80);
+  strip.clear();
+  strip.show();
+  delay(80);
+  strip.show();
+  delay(80);
   strip.clear();
   strip.show();
 }
 
 void handlePing() {
-  Serial.println("{\"pong\":\"ok\"}");
-  // Piscar LED central
+  // PADRÃO VISUAL: PISCAR AZUL NO CENTRO (ping recebido)
   int center = NUM_LEDS / 2;
-  strip.setPixelColor(center, strip.Color(255, 255, 255));
+  strip.setPixelColor(center, strip.Color(0, 0, 255));
   strip.show();
-  delay(80);
+  delay(200);
   strip.setPixelColor(center, strip.Color(0, 0, 0));
   strip.show();
 }
 
 void renderFrame() {
-  Serial.println("{\"debug\":\"renderFrame iniciado\"}");
-  
   strip.clear();
   
   // Calcular posições
   int i1 = ((long)floor(dist1) % NUM_LEDS + NUM_LEDS) % NUM_LEDS;
   int i2 = ((long)floor(dist2) % NUM_LEDS + NUM_LEDS) % NUM_LEDS;
-  
-  Serial.print("{\"debug\":\"Posicoes - i1:\"");
-  Serial.print(i1);
-  Serial.print(", i2:\"");
-  Serial.print(i2);
-  Serial.print(", numPixels:\"");
-  Serial.print(NUM_LEDS);
-  Serial.println("\"}");
   
   // Desenhar carro 1 (vermelho)
   strip.setPixelColor(i1, strip.Color(255, 0, 0));
@@ -224,9 +218,7 @@ void renderFrame() {
   // Desenhar carro 2 (verde)
   strip.setPixelColor(i2, strip.Color(0, 255, 0));
   
-  Serial.println("{\"debug\":\"Carros desenhados, chamando strip.show()\"}");
   strip.show();
-  Serial.println("{\"debug\":\"strip.show() executado\"}");
 }
 
 void runCountdown() {
@@ -244,15 +236,12 @@ void runCountdown() {
     switch(countdownStep) {
       case 0: // Vermelho
         color = strip.Color(255, 0, 0);
-        Serial.println("{\"debug\":\"Countdown 3 - VERMELHO\"}");
         break;
       case 1: // Amarelo
         color = strip.Color(255, 255, 0);
-        Serial.println("{\"debug\":\"Countdown 2 - AMARELO\"}");
         break;
       case 2: // Verde
         color = strip.Color(0, 255, 0);
-        Serial.println("{\"debug\":\"Countdown 1 - VERDE\"}");
         break;
     }
     
@@ -270,16 +259,11 @@ void runCountdown() {
 }
 
 void runPeriodicTest() {
-  // Teste visual periódico para confirmar funcionamento
-  Serial.print("{\"debug\":\"Teste periodico #");
-  Serial.print(testCounter);
-  Serial.println("\"}");
-  
-  // Piscar LEDs alternados
+  // Teste visual periódico - PISCAR AZUL ALTERNADO
   strip.clear();
   for (int i = 0; i < NUM_LEDS; i++) {
     if (i % 2 == testCounter % 2) {
-      strip.setPixelColor(i, strip.Color(0, 0, 100)); // Azul
+      strip.setPixelColor(i, strip.Color(0, 0, 100));
     }
   }
   strip.show();
@@ -291,25 +275,21 @@ void runPeriodicTest() {
 }
 
 void testLEDs() {
-  Serial.println("Teste LED iniciado");
-  
-  // Vermelho
+  // SEQUÊNCIA RGB para testar todos os LEDs
   for (int i = 0; i < NUM_LEDS; i++) {
-    strip.setPixelColor(i, strip.Color(50, 0, 0));
+    strip.setPixelColor(i, strip.Color(50, 0, 0));   // Vermelho
   }
   strip.show();
   delay(300);
   
-  // Verde
   for (int i = 0; i < NUM_LEDS; i++) {
-    strip.setPixelColor(i, strip.Color(0, 50, 0));
+    strip.setPixelColor(i, strip.Color(0, 50, 0));   // Verde
   }
   strip.show();
   delay(300);
   
-  // Azul
   for (int i = 0; i < NUM_LEDS; i++) {
-    strip.setPixelColor(i, strip.Color(0, 0, 50));
+    strip.setPixelColor(i, strip.Color(0, 0, 50));   // Azul
   }
   strip.show();
   delay(300);
@@ -317,8 +297,6 @@ void testLEDs() {
   // Limpar
   strip.clear();
   strip.show();
-  
-  Serial.println("Teste LED concluído");
 }
 
 void runDemo() {
