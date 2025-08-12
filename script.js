@@ -916,38 +916,13 @@ class LEDRace {
             return;
         }
         
-        // VERIFICAR CONEXÃO REAL
         try {
-            console.log(`[UI] Verificando conexão...`);
-            console.log(`[UI] this.port:`, this.port);
-            console.log(`[UI] this.writer:`, this.writer);
-            console.log(`[UI] Porta aberta:`, this.port?.readable && this.port?.writable);
-            
-            // Testar se a porta ainda está ativa
-            if (!this.port?.readable || !this.port?.writable) {
-                console.error('[UI] Porta serial não está ativa!');
-                alert('Conexão serial perdida. Reconecte o Arduino!');
-                return;
-            }
-            
             console.log(`[UI] Enviando comando direto: ${command}`);
             
-            // ENVIAR COMANDO VÁRIAS VEZES PARA GARANTIR
-            for (let i = 0; i < 3; i++) {
-                const data = new TextEncoder().encode(command + '\n');
-                console.log(`[UI] Tentativa ${i + 1}/3 - Dados: [${Array.from(data).map(b => '0x' + b.toString(16).padStart(2, '0')).join(', ')}]`);
-                
-                await this.writer.write(data);
-                console.log(`[UI] Tentativa ${i + 1}/3 enviada`);
-                
-                // Aguardar entre tentativas
-                if (i < 2) {
-                    await this.sleep(200);
-                    console.log(`[UI] Aguardei 200ms entre tentativas`);
-                }
-            }
-            
-            console.log(`[UI] Comando ${command} enviado com sucesso (3 tentativas)!`);
+            // IMPLEMENTAÇÃO QUE FUNCIONA (copiada do serial_test.html)
+            const data = new TextEncoder().encode(command + '\n');
+            await this.writer.write(data);
+            console.log(`[UI] Comando ${command} enviado com sucesso!`);
             
         } catch (error) {
             console.error(`[UI] Erro ao enviar comando ${command}:`, error);
