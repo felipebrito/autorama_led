@@ -88,16 +88,21 @@ void loop() {
     lastDemo = millis();
   }
   
-  // MANTER WI-FI ATIVO
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("WiFi perdido, reconectando...");
-    setupWiFi();
+  // MANTER WI-FI ATIVO (AP mode não precisa reconectar)
+  static unsigned long lastWiFiCheck = 0;
+  if (millis() - lastWiFiCheck > 30000) { // Verificar a cada 30 segundos
+    lastWiFiCheck = millis();
+    if (WiFi.softAPgetStationNum() == 0) {
+      Serial.println("Nenhum dispositivo conectado ao WiFi");
+    } else {
+      Serial.printf("Dispositivos conectados: %d\n", WiFi.softAPgetStationNum());
+    }
   }
 }
 
 // ===== WI-FI =====
 void setupWiFi() {
-  Serial.print("Conectando ao WiFi: ");
+  Serial.print("Configurando WiFi AP: ");
   Serial.println(WIFI_SSID);
   
   WiFi.mode(WIFI_AP);
@@ -105,6 +110,7 @@ void setupWiFi() {
   
   Serial.print("IP do ESP32: ");
   Serial.println(WiFi.softAPIP());
+  Serial.println("WiFi AP configurado com sucesso!");
 }
 
 // ===== WEB SERVER =====
@@ -180,6 +186,7 @@ void processMessage(String message) {
     Serial.println("✓ Comando LIMPAR detectado");
     strip.clear();
     strip.show();
+    Serial.println("✓ LEDs limpos");
   } else if (message.equalsIgnoreCase("ajuda")) {
     Serial.println("✓ Comando AJUDA detectado");
     showHelp();
@@ -432,7 +439,9 @@ void handleCommand() {
     processMessage(body);
     
     server.send(200, "application/json", "{\"status\":\"ok\"}");
+    Serial.println("✓ Resposta enviada para web");
   } else {
+    Serial.println("✗ Erro: Sem corpo na requisição");
     server.send(400, "application/json", "{\"error\":\"No body\"}");
   }
 }
@@ -440,7 +449,7 @@ void handleCommand() {
 // ===== WEB SOCKET HANDLERS =====
 void handleWebSocketMessage(uint8_t num, uint8_t * payload, size_t length) {
   String message = String((char*)payload);
-  Serial.print("WebSocket: ");
+  Serial.printf("WebSocket [%u]: ", num);
   Serial.println(message);
   
   processMessage(message);
