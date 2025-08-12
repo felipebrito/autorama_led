@@ -45,22 +45,30 @@ void setup() {
 }
 
 void loop() {
-  // Ler mensagens do serial
+  // PRIORIDADE MÁXIMA: Ler mensagens do serial
   while (Serial.available()) {
     char inChar = (char)Serial.read();
     
     if (inChar == '\n') {
       stringComplete = true;
+      Serial.println("DEBUG: \\n detectado, mensagem completa!");
     } else {
       inputString += inChar;
+      Serial.print("DEBUG: Caractere recebido: '");
+      Serial.print(inChar);
+      Serial.print("' (ASCII: ");
+      Serial.print((int)inChar);
+      Serial.println(")");
     }
   }
   
-  // Processar mensagem completa
+  // Processar mensagem completa IMEDIATAMENTE
   if (stringComplete) {
+    Serial.println("DEBUG: Processando mensagem completa...");
     processMessage(inputString);
     inputString = "";
     stringComplete = false;
+    Serial.println("DEBUG: Mensagem processada, buffer limpo!");
   }
   
   // Modo de teste ativo
@@ -81,9 +89,9 @@ void loop() {
     lastTestTime = millis();
   }
   
-  // Demo simples se não receber mensagens
+  // Demo simples se não receber mensagens (REDUZIR FREQUÊNCIA)
   static unsigned long lastDemo = 0;
-  if (millis() - lastDemo > 2000 && !testMode) {
+  if (millis() - lastDemo > 10000 && !testMode) { // Aumentar de 2000 para 10000ms
     runDemo();
     lastDemo = millis();
   }
