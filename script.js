@@ -181,7 +181,11 @@ class LEDRace {
         if (this.connectBtn) {
             this.connectBtn.addEventListener('click', async () => {
                 try {
+                    // fecha conexão anterior, se houver
+                    try { this.closeSerial?.(); } catch (_) {}
                     this.port = await navigator.serial.requestPort();
+                    const info = this.port.getInfo ? this.port.getInfo() : {};
+                    console.info('Selected port info:', info);
                     await this.port.open({ baudRate: 115200 });
                     this.writer = this.port.writable.getWriter();
                     if (this.serialStatus) this.serialStatus.textContent = 'Conectado';
@@ -192,6 +196,7 @@ class LEDRace {
                     // Iniciar envio periódico de estado
                     this.startSerialLoop();
                 } catch (e) {
+                    console.error('Serial connect error:', e?.name, e?.message || e);
                     if (this.serialStatus) this.serialStatus.textContent = 'Falha ao conectar';
                 }
             });
@@ -271,6 +276,16 @@ class LEDRace {
             }
         };
         pump();
+    }
+
+    closeSerial() {
+        try { if (this.serialSendInterval) clearInterval(this.serialSendInterval); } catch (_) {}
+        try { if (this.reader) this.reader.releaseLock(); } catch (_) {}
+        try { if (this.writer) this.writer.releaseLock(); } catch (_) {}
+        try { if (this.port) this.port.close(); } catch (_) {}
+        this.port = null;
+        this.reader = null;
+        this.writer = null;
     }
     
     setupEventListeners() {
