@@ -18,8 +18,8 @@ class LEDRace {
         this.leader = 0;
         
         // Flags de controle
-        this.flag_sw1 = 0;
-        this.flag_sw2 = 0;
+        this.flag_sw1 = 1;
+        this.flag_sw2 = 1;
         this.draworder = 0;
         this.gameRunning = false;
         this.lastTimestampMs = null; // para física baseada em tempo
@@ -444,14 +444,10 @@ class LEDRace {
             }
         });
         this.btn1.addEventListener('mouseup', () => {
-            if (this.flag_sw1 === 0) {
-                this.flag_sw1 = 1;
-            }
+            this.flag_sw1 = 1;
         });
         this.btn1.addEventListener('mouseleave', () => {
-            if (this.flag_sw1 === 0) {
-                this.flag_sw1 = 1;
-            }
+            this.flag_sw1 = 1;
         });
         
         this.btn2.addEventListener('mousedown', () => {
@@ -461,14 +457,10 @@ class LEDRace {
             }
         });
         this.btn2.addEventListener('mouseup', () => {
-            if (this.flag_sw2 === 0) {
-                this.flag_sw2 = 1;
-            }
+            this.flag_sw2 = 1;
         });
         this.btn2.addEventListener('mouseleave', () => {
-            if (this.flag_sw2 === 0) {
-                this.flag_sw2 = 1;
-            }
+            this.flag_sw2 = 1;
         });
         
         this.startBtn.addEventListener('click', () => this.startRace());
@@ -484,9 +476,7 @@ class LEDRace {
         });
         this.btn1.addEventListener('touchend', (e) => {
             e.preventDefault();
-            if (this.flag_sw1 === 0) {
-                this.flag_sw1 = 1;
-            }
+            this.flag_sw1 = 1;
         });
         
         this.btn2.addEventListener('touchstart', (e) => {
@@ -498,9 +488,7 @@ class LEDRace {
         });
         this.btn2.addEventListener('touchend', (e) => {
             e.preventDefault();
-            if (this.flag_sw2 === 0) {
-                this.flag_sw2 = 1;
-            }
+            this.flag_sw2 = 1;
         });
     }
     
@@ -527,14 +515,10 @@ class LEDRace {
         document.addEventListener('keyup', (e) => {
             switch(e.key.toLowerCase()) {
                 case 'q':
-                    if (this.flag_sw1 === 0) {
-                        this.flag_sw1 = 1;
-                    }
+                    this.flag_sw1 = 1;
                     break;
                 case 'p':
-                    if (this.flag_sw2 === 0) {
-                        this.flag_sw2 = 1;
-                    }
+                    this.flag_sw2 = 1;
                     break;
             }
         });
@@ -589,8 +573,8 @@ class LEDRace {
         this.loop1 = 0;
         this.loop2 = 0;
         this.leader = 0;
-        this.flag_sw1 = 0;
-        this.flag_sw2 = 0;
+        this.flag_sw1 = 1;
+        this.flag_sw2 = 1;
         
         // Log para debug serial
         console.log('[GAME DEBUG] Corrida parada, gameRunning =', this.gameRunning);
