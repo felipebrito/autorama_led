@@ -46,29 +46,33 @@ void setup() {
 
 void loop() {
   // PRIORIDADE MÁXIMA: Ler mensagens do serial
-  while (Serial.available()) {
-    char inChar = (char)Serial.read();
+  if (Serial.available()) {
+    Serial.println("DEBUG: Serial.available() retornou TRUE!");
     
-    if (inChar == '\n') {
-      stringComplete = true;
-      Serial.println("DEBUG: \\n detectado, mensagem completa!");
-    } else {
-      inputString += inChar;
-      Serial.print("DEBUG: Caractere recebido: '");
-      Serial.print(inChar);
-      Serial.print("' (ASCII: ");
-      Serial.print((int)inChar);
-      Serial.println(")");
+    while (Serial.available()) {
+      char inChar = (char)Serial.read();
+      
+      if (inChar == '\n') {
+        stringComplete = true;
+        Serial.println("DEBUG: \\n detectado, mensagem completa!");
+      } else {
+        inputString += inChar;
+        Serial.print("DEBUG: Caractere recebido: '");
+        Serial.print(inChar);
+        Serial.print("' (ASCII: ");
+        Serial.print((int)inChar);
+        Serial.println(")");
+      }
     }
-  }
-  
-  // Processar mensagem completa IMEDIATAMENTE
-  if (stringComplete) {
-    Serial.println("DEBUG: Processando mensagem completa...");
-    processMessage(inputString);
-    inputString = "";
-    stringComplete = false;
-    Serial.println("DEBUG: Mensagem processada, buffer limpo!");
+    
+    // Processar mensagem completa IMEDIATAMENTE
+    if (stringComplete) {
+      Serial.println("DEBUG: Processando mensagem completa...");
+      processMessage(inputString);
+      inputString = "";
+      stringComplete = false;
+      Serial.println("DEBUG: Mensagem processada, buffer limpo!");
+    }
   }
   
   // Modo de teste ativo
@@ -94,6 +98,19 @@ void loop() {
   if (millis() - lastDemo > 10000 && !testMode) { // Aumentar de 2000 para 10000ms
     runDemo();
     lastDemo = millis();
+  }
+  
+  // DEBUG: Mostrar status a cada 2 segundos
+  static unsigned long lastStatus = 0;
+  if (millis() - lastStatus > 2000) {
+    Serial.print("DEBUG: Status - Serial.available(): ");
+    Serial.print(Serial.available());
+    Serial.print(", stringComplete: ");
+    Serial.print(stringComplete);
+    Serial.print(", inputString: '");
+    Serial.print(inputString);
+    Serial.println("'");
+    lastStatus = millis();
   }
 }
 

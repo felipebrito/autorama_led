@@ -74,7 +74,7 @@ class LEDRace {
         // Configurações
         this.bindConfigPanel();
         this.initSerial();
-        this.setupTestButtons(); // Inicializa os botões de teste
+        // this.setupTestButtons(); // Inicializa os botões de teste - Moved to openSelectedPort
     }
     
     createLEDs() {
@@ -326,6 +326,10 @@ class LEDRace {
         this.port = port;
         this.writer = this.port.writable.getWriter();
         if (this.serialStatus) this.serialStatus.textContent = 'Conectado';
+        
+        // INICIALIZAR BOTÕES DE TESTE APENAS DEPOIS DA CONEXÃO
+        this.setupTestButtons();
+        
         await this.sendConfigToArduino();
         console.log('[SERIAL] config sent');
         this.startSerialReadLoop();
