@@ -34,7 +34,7 @@ int loopMax = 5;
 int maxLed = 100;
 bool gameRunning = false;
 bool testMode = false;
-bool btn1Pressed = false, btn2Pressed = false;
+bool flag_sw1 = true, flag_sw2 = true; // Edge detection como no original
 bool btn1LastState = false, btn2LastState = false;
 unsigned long lastBtn1Press = 0, lastBtn2Press = 0;
 
@@ -409,8 +409,8 @@ void startGame() {
   vel2 = 0.0f;
   loop1 = 0;
   loop2 = 0;
-  lapStart1 = millis();
-  lapStart2 = millis();
+  flag_sw1 = true;
+  flag_sw2 = true;
   
   // Countdown visual
   for (int i = 0; i < 3; i++) {
@@ -474,41 +474,50 @@ void renderGameState() {
   
   strip.clear();
   
-  // Renderizar posição dos carros
-  int pos1 = map(dist1, 0, maxLed, 0, NUM_LEDS-1);
-  int pos2 = map(dist2, 0, maxLed, 0, NUM_LEDS-1);
-  
-  // Garantir que posições sejam válidas
-  pos1 = constrain(pos1, 0, NUM_LEDS-1);
-  pos2 = constrain(pos2, 0, NUM_LEDS-1);
-  
-  // Renderizar Jogador 1 (vermelho) com rastro
-  for (int i = 0; i <= tail; i++) {
-    int rastro1 = pos1 - i;
-    if (rastro1 >= 0 && rastro1 < NUM_LEDS) {
-      int intensidade = 255 - (i * 50);
-      if (intensidade > 0) {
-        strip.setPixelColor(rastro1, strip.Color(intensidade, 0, 0));
-      }
+  // Renderizar posição dos carros com draworder alternado (como no original)
+  static bool draworder = false;
+  if ((millis() & 512) == (512 * draworder)) {
+    if (draworder == 0) {
+      draworder = 1;
+    } else {
+      draworder = 0;
     }
   }
   
-  // Renderizar Jogador 2 (verde) com rastro
-  for (int i = 0; i <= tail; i++) {
-    int rastro2 = pos2 - i;
-    if (rastro2 >= 0 && rastro2 < NUM_LEDS) {
-      int intensidade = 255 - (i * 50);
-      if (intensidade > 0) {
-        strip.setPixelColor(rastro2, strip.Color(0, intensidade, 0));
-      }
-    }
+  // Renderizar na ordem correta
+  if (draworder == 0) {
+    drawCar1();
+    drawCar2();
+  } else {
+    drawCar2();
+    drawCar1();
   }
-  
-  // Posição principal dos carros (mais brilhante)
-  strip.setPixelColor(pos1, strip.Color(255, 0, 0));  // Jogador 1 vermelho
-  strip.setPixelColor(pos2, strip.Color(0, 255, 0));  // Jogador 2 verde
   
   strip.show();
+}
+
+void drawCar1() {
+  for (int i = 0; i <= tail; i++) {
+    int pos = ((int)dist1 % NUM_LEDS) + i;
+    if (pos < NUM_LEDS) {
+      int intensidade = 255 - (i * 20);
+      if (intensidade > 0) {
+        strip.setPixelColor(pos, strip.Color(255 - i * 20, 0, 0)); // Vermelho com fade
+      }
+    }
+  }
+}
+
+void drawCar2() {
+  for (int i = 0; i <= tail; i++) {
+    int pos = ((int)dist2 % NUM_LEDS) + i;
+    if (pos < NUM_LEDS) {
+      int intensidade = 255 - (i * 20);
+      if (intensidade > 0) {
+        strip.setPixelColor(pos, strip.Color(0, 255 - i * 20, 0)); // Verde com fade
+      }
+    }
+  }
 }
 
 void showHelp() {
@@ -525,26 +534,24 @@ void showHelp() {
 
 // ===== FUNÇÕES DO JOGO =====
 void readButtons() {
-  // Ler estado atual dos botões
-  bool btn1Current = !digitalRead(PIN_BTN1); // Invertido por causa do PULLUP
-  bool btn2Current = !digitalRead(PIN_BTN2);
-  
-  // Detectar pressionamento (edge detection)
-  if (btn1Current && !btn1LastState && millis() - lastBtn1Press > 200) {
-    btn1Pressed = true;
-    lastBtn1Press = millis();
+  // Edge detection como no código original
+  if ((flag_sw1 == 1) && (digitalRead(PIN_BTN1) == 0)) {
+    flag_sw1 = 0;
+    vel1 += acel;
     Serial.println("Botão Jogador 1 pressionado!");
   }
-  
-  if (btn2Current && !btn2LastState && millis() - lastBtn2Press > 200) {
-    btn2Pressed = true;
-    lastBtn2Press = millis();
+  if ((flag_sw1 == 0) && (digitalRead(PIN_BTN1) == 1)) {
+    flag_sw1 = 1;
+  }
+
+  if ((flag_sw2 == 1) && (digitalRead(PIN_BTN2) == 0)) {
+    flag_sw2 = 0;
+    vel2 += acel;
     Serial.println("Botão Jogador 2 pressionado!");
   }
-  
-  // Atualizar estado anterior
-  btn1LastState = btn1Current;
-  btn2LastState = btn2Current;
+  if ((flag_sw2 == 0) && (digitalRead(PIN_BTN2) == 1)) {
+    flag_sw2 = 1;
+  }
 }
 
 void updateGame() {
@@ -552,16 +559,7 @@ void updateGame() {
   if (millis() - lastUpdate < 50) return; // 20 FPS
   lastUpdate = millis();
   
-  // Processar botões pressionados
-  if (btn1Pressed) {
-    vel1 += acel; // Acelerar Jogador 1
-    btn1Pressed = false;
-  }
-  
-  if (btn2Pressed) {
-    vel2 += acel; // Acelerar Jogador 2
-    btn2Pressed = false;
-  }
+  // Botões já processados em readButtons()
   
   // Aplicar física (velocidade e distância)
   dist1 += vel1;
@@ -579,18 +577,16 @@ void updateGame() {
   if (vel1 < 0) vel1 = 0;
   if (vel2 < 0) vel2 = 0;
   
-  // Verificar volta completa
-  if (dist1 >= maxLed) {
+  // Verificar volta completa (como no original)
+  if (dist1 > NUM_LEDS * loop1) {
     loop1++;
-    dist1 = 0;
-    lapStart1 = millis();
+    tone(PIN_LED, 600); // Som de volta (usando LED como speaker temporário)
     Serial.printf("Jogador 1 completou volta %d!\n", loop1);
   }
   
-  if (dist2 >= maxLed) {
+  if (dist2 > NUM_LEDS * loop2) {
     loop2++;
-    dist2 = 0;
-    lapStart2 = millis();
+    tone(PIN_LED, 700); // Som de volta (usando LED como speaker temporário)
     Serial.printf("Jogador 2 completou volta %d!\n", loop2);
   }
   
