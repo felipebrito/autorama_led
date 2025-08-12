@@ -918,9 +918,24 @@ class LEDRace {
         
         try {
             console.log(`[UI] Enviando comando direto: ${command}`);
-            const data = new TextEncoder().encode(command + '\n');
-            await this.writer.write(data);
-            console.log(`[UI] Comando ${command} enviado com sucesso!`);
+            
+            // ENVIAR COMANDO VÁRIAS VEZES PARA GARANTIR
+            for (let i = 0; i < 3; i++) {
+                const data = new TextEncoder().encode(command + '\n');
+                console.log(`[UI] Tentativa ${i + 1}/3 - Dados: [${Array.from(data).map(b => '0x' + b.toString(16).padStart(2, '0')).join(', ')}]`);
+                
+                await this.writer.write(data);
+                console.log(`[UI] Tentativa ${i + 1}/3 enviada`);
+                
+                // Aguardar entre tentativas
+                if (i < 2) {
+                    await this.sleep(200);
+                    console.log(`[UI] Aguardei 200ms entre tentativas`);
+                }
+            }
+            
+            console.log(`[UI] Comando ${command} enviado com sucesso (3 tentativas)!`);
+            
         } catch (error) {
             console.error(`[UI] Erro ao enviar comando ${command}:`, error);
             alert(`Erro ao enviar comando ${command}: ` + error.message);
