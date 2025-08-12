@@ -346,3 +346,38 @@ header p {
 @media (max-width: 900px) {
   .timing-grid { grid-template-columns: 1fr; }
 }
+
+.test-direct-buttons {
+    margin: 20px 0;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.test-direct-buttons h4 {
+    margin: 0 0 15px 0;
+    color: #495057;
+    font-size: 14px;
+    text-align: center;
+}
+
+.test-direct-buttons .control-btn {
+    margin: 5px;
+    padding: 8px 12px;
+    font-size: 12px;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.test-direct-buttons .control-btn:hover {
+    background: #218838;
+}
+
+.test-direct-buttons .control-btn:active {
+    background: #1e7e34;
+}

@@ -54,6 +54,13 @@ class LEDRace {
         this.disconnectBtn = document.getElementById('disconnectBtn');
         this.testEffectBtn = document.getElementById('testEffectBtn');
         
+        // NOVOS BOTÕES DE TESTE DIRETO
+        this.testJogador1Btn = document.getElementById('testJogador1Btn');
+        this.testJogador2Btn = document.getElementById('testJogador2Btn');
+        this.testSimularBtn = document.getElementById('testSimularBtn');
+        this.testDemoBtn = document.getElementById('testDemoBtn');
+        this.testLimparBtn = document.getElementById('testLimparBtn');
+        
         this.init();
     }
     
@@ -67,6 +74,7 @@ class LEDRace {
         // Configurações
         this.bindConfigPanel();
         this.initSerial();
+        this.setupTestButtons(); // Inicializa os botões de teste
     }
     
     createLEDs() {
@@ -894,6 +902,67 @@ class LEDRace {
                 this.playLapSound(freq);
             }, index * 230);
         });
+    }
+
+    // NOVAS FUNÇÕES DE TESTE DIRETO
+    async sendSimpleCommand(command) {
+        if (!this.writer) {
+            console.warn('[UI] Arduino não conectado!');
+            alert('Conecte o Arduino primeiro!');
+            return;
+        }
+        
+        try {
+            console.log(`[UI] Enviando comando direto: ${command}`);
+            const data = new TextEncoder().encode(command + '\n');
+            await this.writer.write(data);
+            console.log(`[UI] Comando ${command} enviado com sucesso!`);
+        } catch (error) {
+            console.error(`[UI] Erro ao enviar comando ${command}:`, error);
+            alert(`Erro ao enviar comando ${command}: ` + error.message);
+        }
+    }
+
+    setupTestButtons() {
+        // Botão Testar Jogador 1
+        if (this.testJogador1Btn) {
+            this.testJogador1Btn.addEventListener('click', async () => {
+                console.log('[UI] testJogador1Btn clicked');
+                await this.sendSimpleCommand('jogador1');
+            });
+        }
+
+        // Botão Testar Jogador 2
+        if (this.testJogador2Btn) {
+            this.testJogador2Btn.addEventListener('click', async () => {
+                console.log('[UI] testJogador2Btn clicked');
+                await this.sendSimpleCommand('jogador2');
+            });
+        }
+
+        // Botão Simular
+        if (this.testSimularBtn) {
+            this.testSimularBtn.addEventListener('click', async () => {
+                console.log('[UI] testSimularBtn clicked');
+                await this.sendSimpleCommand('simular');
+            });
+        }
+
+        // Botão Demo
+        if (this.testDemoBtn) {
+            this.testDemoBtn.addEventListener('click', async () => {
+                console.log('[UI] testDemoBtn clicked');
+                await this.sendSimpleCommand('demo');
+            });
+        }
+
+        // Botão Limpar
+        if (this.testLimparBtn) {
+            this.testLimparBtn.addEventListener('click', async () => {
+                console.log('[UI] testLimparBtn clicked');
+                await this.sendSimpleCommand('limpar');
+            });
+        }
     }
 }
 
