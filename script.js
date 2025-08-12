@@ -281,10 +281,16 @@ class LEDRace {
 
     async sendLine(obj) {
         if (!this.writer) return;
-        const line = JSON.stringify(obj) + '\\n';
+        const line = JSON.stringify(obj) + '\n';
         const data = new TextEncoder().encode(line);
         try {
             await this.writer.write(data);
+            // Log de debug para todas as mensagens enviadas
+            if (obj.type === 'state' && this.gameRunning) {
+                console.log('[SERIAL TX] Estado enviado:', JSON.stringify(obj));
+            } else if (obj.type === 'config') {
+                console.log('[SERIAL TX] Config enviada:', JSON.stringify(obj));
+            }
         } catch (err) {
             console.error('Serial write error:', err);
             if (this.serialStatus) this.serialStatus.textContent = 'Erro ao enviar';
@@ -298,7 +304,7 @@ class LEDRace {
     startSerialLoop() {
         if (this.serialSendInterval) clearInterval(this.serialSendInterval);
         this.serialSendInterval = setInterval(() => {
-            this.sendLine({
+            const stateData = {
                 type: 'state',
                 dist1: this.dist1,
                 dist2: this.dist2,
@@ -309,7 +315,21 @@ class LEDRace {
                 leader: this.leader,
                 // Envie running=true sempre que a corrida estiver ativa; caso contrário true se quiser parar demo ao parar
                 running: this.gameRunning ? 1 : 0
-            });
+            };
+            
+            // Log detalhado do estado sendo enviado
+            if (this.gameRunning) {
+                console.log('[SERIAL DEBUG] Enviando estado:', {
+                    dist1: this.dist1.toFixed(2),
+                    dist2: this.dist2.toFixed(2),
+                    speed1: this.speed1.toFixed(2),
+                    speed2: this.speed2.toFixed(2),
+                    running: this.gameRunning ? 1 : 0,
+                    timestamp: Date.now()
+                });
+            }
+            
+            this.sendLine(stateData);
         }, 100);
     }
 
@@ -482,6 +502,9 @@ class LEDRace {
         this.startBtn.disabled = true;
         this.lastTimestampMs = null;
         
+        // Log para debug serial
+        console.log('[GAME DEBUG] Corrida iniciada, gameRunning =', this.gameRunning);
+        
         // Sequência de início como no Arduino
         this.countdown();
         
@@ -520,6 +543,9 @@ class LEDRace {
         this.leader = 0;
         this.flag_sw1 = 0;
         this.flag_sw2 = 0;
+        
+        // Log para debug serial
+        console.log('[GAME DEBUG] Corrida parada, gameRunning =', this.gameRunning);
         
         this.startBtn.textContent = 'Iniciar Corrida';
         this.startBtn.disabled = false;
@@ -697,25 +723,13 @@ class LEDRace {
         this.startBtn.textContent = 'Iniciar Corrida';
         this.startBtn.disabled = false;
         
-        if (player === 1) {
-            this.leaderDisplay.textContent = '🏆 Jogador 1 Venceu! 🏆';
-            this.track.classList.add('winner');
-            this.car1.classList.add('winner');
-        } else {
-            this.leaderDisplay.textContent = '🏆 Jogador 2 Venceu! 🏆';
-            this.track.classList.add('winner');
-            this.car2.classList.add('winner');
-        }
+        // Log para debug serial
+        console.log('[GAME DEBUG] Corrida terminada, gameRunning =', this.gameRunning, 'Vencedor:', player);
         
-        this.playWinnerSound();
+        this.leaderDisplay.textContent = `🏆 Jogador ${player} venceu!`;
         
-        // Reiniciar após 3 segundos
-        setTimeout(() => {
-            this.resetRace();
-            this.track.classList.remove('winner');
-            this.car1.classList.remove('winner');
-            this.car2.classList.remove('winner');
-        }, 3000);
+        // Parar o loop do jogo
+        this.lastTimestampMs = null;
     }
     
     updateDisplay() {
