@@ -21,6 +21,8 @@ uint16_t lineLen = 0;
 
 // Estado vindo do navegador
 float dist1 = 0.0f, dist2 = 0.0f;
+unsigned long lastMsgMs = 0;   // última msg válida recebida
+bool haveLiveData = false;     // já recebemos 'state'
 
 template<typename T>
 T clampT(T v, T lo, T hi) { return v < lo ? lo : (v > hi ? hi : v); }
@@ -83,15 +85,35 @@ void renderFrame() {
   strip.show();
 }
 
+void showColor(uint8_t r, uint8_t g, uint8_t b, uint16_t count, uint16_t delayMs) {
+  uint32_t c = strip.Color(r,g,b);
+  count = (count > MAX_PIXELS) ? MAX_PIXELS : count;
+  for (uint16_t i = 0; i < count; i++) strip.setPixelColor(i, c);
+  strip.show();
+  delay(delayMs);
+}
+
+void selfTest() {
+  // Sequência curta para validar alimentação/dados
+  showColor(50, 0, 0, numPixels, 300);
+  showColor(0, 50, 0, numPixels, 300);
+  showColor(0, 0, 50, numPixels, 300);
+  // limpa
+  strip.clear();
+  strip.show();
+}
+
 void setup() {
   Serial.begin(115200);
   strip.begin();
   strip.show();
+  selfTest();
   Serial.println("{\"arduino\":\"ready\"}");
 }
 
 void loop() {
   // Leitura não bloqueante de linhas
+  bool gotLine = false;
   while (Serial.available() > 0) {
     char c = (char)Serial.read();
     if (c == '\r') continue;
@@ -103,14 +125,30 @@ void loop() {
         } else if (hasType(lineBuf, "state")) {
           applyStateFromJson(lineBuf);
           renderFrame();
+          haveLiveData = true;
+          lastMsgMs = millis();
         }
       }
       lineLen = 0;
+      gotLine = true;
     } else if (lineLen < RX_BUF - 1) {
       lineBuf[lineLen++] = c;
     } else {
       // overflow: descarta a linha
       lineLen = 0;
+    }
+  }
+
+  // Demo: se não receber dados por 2s, movimenta 1 pixel para validar hardware
+  if (!haveLiveData || (millis() - lastMsgMs > 2000)) {
+    static unsigned long lastStep = 0;
+    static uint16_t demoIdx = 0;
+    if (millis() - lastStep > 80) {
+      lastStep = millis();
+      strip.clear();
+      strip.setPixelColor(demoIdx % numPixels, strip.Color(30, 30, 0));
+      strip.show();
+      demoIdx++;
     }
   }
 }
