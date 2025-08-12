@@ -225,8 +225,7 @@ float extractFloat(const char* message, const char* key) {
   if (!k) return -1.0f;
   k = strchr(k, ':'); if (!k) return -1.0f; k++;
   while (*k==' '||*k=='\t') k++;
-  char* endptr = nullptr;
-  return strtof(k, &endptr);
+  return atof(k);
 }
 
 void showConfigReceived() {
