@@ -306,35 +306,43 @@ class LEDRace {
 
     async openSelectedPort(port) {
         if (!port) throw new Error('No port provided');
-        // Se já estiver aberta, segue direto
-        if (!port.readable && !port.writable) {
+        
+        try {
             await port.open({ baudRate: 115200 });
             console.log('[SERIAL] port opened @115200');
-        } else {
-            console.warn('[SERIAL] port already open, reusing instance');
-        }
-        // DTR/RTS toggle para reset
-        try {
-            await port.setSignals({ dataTerminalReady: false, requestToSend: false });
-            await this.sleep(150);
-            await port.setSignals({ dataTerminalReady: true, requestToSend: true });
-            await this.sleep(150);
-            console.log('[SERIAL] DTR/RTS toggled');
+            
+            // DTR/RTS toggle para reset
+            try {
+                await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+                await this.sleep(150);
+                await port.setSignals({ dataTerminalReady: true, requestToSend: true });
+                await this.sleep(150);
+                console.log('[SERIAL] DTR/RTS toggled');
+            } catch (e) {
+                console.warn('[SERIAL] setSignals not supported or failed:', e?.message || e);
+            }
+            
+            this.port = port;
+            this.writer = this.port.writable.getWriter();
+            this.reader = this.port.readable.getReader();
+            
+            if (this.serialStatus) this.serialStatus.textContent = 'Conectado';
+            
+            // INICIALIZAR BOTÕES DE TESTE APENAS DEPOIS DA CONEXÃO
+            this.setupTestButtons();
+            
+            await this.sendConfigToArduino();
+            console.log('[SERIAL] config sent');
+            
+            // IMPLEMENTAÇÃO QUE FUNCIONA (copiada do serial_test.html)
+            this.startReadLoop();
+            
+            console.log('[SERIAL] Conectado com sucesso!');
+            
         } catch (e) {
-            console.warn('[SERIAL] setSignals not supported or failed:', e?.message || e);
+            console.error('[SERIAL] Erro ao abrir porta:', e);
+            throw e;
         }
-        this.port = port;
-        this.writer = this.port.writable.getWriter();
-        if (this.serialStatus) this.serialStatus.textContent = 'Conectado';
-        
-        // INICIALIZAR BOTÕES DE TESTE APENAS DEPOIS DA CONEXÃO
-        this.setupTestButtons();
-        
-        await this.sendConfigToArduino();
-        console.log('[SERIAL] config sent');
-        // this.startSerialReadLoop(); // TEMPORARIAMENTE DESABILITADO PARA TESTE
-        // this.startSerialLoop(); // TEMPORARIAMENTE DESABILITADO PARA TESTE
-        console.log('[SERIAL] state loop started');
     }
 
     async sendLine(obj) {
