@@ -186,12 +186,17 @@ class LEDRace {
                 console.log('[UI] connectBtn clicked');
                 try {
                     // fecha conexão anterior, se houver
-                    try { this.closeSerial?.(); } catch (_) {}
+                try { this.closeSerial?.(); } catch (e) { console.warn('[SERIAL] close before connect ignored:', e?.message||e); }
                     this.port = await navigator.serial.requestPort();
                     const info = this.port.getInfo ? this.port.getInfo() : {};
                     console.log('[SERIAL] requestPort resolved:', info);
-                    await this.port.open({ baudRate: 115200 });
-                    console.log('[SERIAL] port opened @115200');
+                    // Se a porta já estiver aberta, evite open() duplicado
+                    if (this.port.readable || this.port.writable) {
+                        console.warn('[SERIAL] port already open, skipping open()');
+                    } else {
+                        await this.port.open({ baudRate: 115200 });
+                        console.log('[SERIAL] port opened @115200');
+                    }
                     // Tenta resetar a placa (DTR toggle) para garantir mensagem de ready
                     try {
                         await this.port.setSignals({ dataTerminalReady: false, requestToSend: false });
@@ -274,7 +279,8 @@ class LEDRace {
                 loop1: this.loop1,
                 loop2: this.loop2,
                 leader: this.leader,
-                running: this.gameRunning
+                // Envie running=true sempre que a corrida estiver ativa; caso contrário true se quiser parar demo ao parar
+                running: this.gameRunning ? 1 : 0
             });
         }, 100);
     }
@@ -326,7 +332,7 @@ class LEDRace {
         try { if (this.reader) this.reader.cancel(); } catch (_) {}
         try { if (this.reader) this.reader.releaseLock(); } catch (_) {}
         try { if (this.writer) this.writer.releaseLock(); } catch (_) {}
-        try { if (this.port) this.port.close(); } catch (_) {}
+        try { if (this.port) this.port.close(); } catch (e) { console.warn('[SERIAL] close() ignored:', e?.message||e); }
         this.port = null;
         this.reader = null;
         this.writer = null;

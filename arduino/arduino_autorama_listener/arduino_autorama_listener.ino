@@ -2,13 +2,17 @@
 
 // PINAGEM (ajuste se necessário)
 #define PIN_LED      6          // pino da fita WS2812/WS2813
-#define MAX_PIXELS   300        // capacidade máxima física da fita
+#define MAX_PIXELS   300        // capacidade máxima suportada pelo objeto NeoPixel
+// AJUSTE AQUI: quantidade REAL de LEDs na sua fita conectada
+#ifndef PHYS_PIXELS
+#define PHYS_PIXELS  20         // EX.: 20 LEDs físicos conectados
+#endif
 
 // FITA
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(MAX_PIXELS, PIN_LED, NEO_GRB + NEO_KHZ800);
 
 // ESTADO E CONFIG
-uint16_t numPixels = 20;        // tamanho lógico da pista (recebido via config.maxLed)
+uint16_t numPixels = PHYS_PIXELS; // tamanho lógico da pista (recebido via config.maxLed e limitado aos LEDs físicos)
 uint8_t  tailLen   = 3;         // tamanho do rastro (opcional via config.tail)
 uint32_t colorP1   = strip.Color(255, 0, 0);   // carro 1 (vermelho)
 uint32_t colorP2   = strip.Color(0, 255, 0);   // carro 2 (verde)
@@ -53,7 +57,9 @@ bool hasType(const char* src, const char* typeName) {
 void applyConfigFromJson(const char* json) {
   uint16_t v;
   if (parseUInt16(json, "\"maxLed\"", v)) {
-    numPixels = clampT<uint16_t>(v, 1, MAX_PIXELS);
+    // Nunca ultrapassar a quantidade FÍSICA de LEDs conectados
+    uint16_t limit = (PHYS_PIXELS < MAX_PIXELS) ? PHYS_PIXELS : MAX_PIXELS;
+    numPixels = clampT<uint16_t>(v, 1, limit);
   }
   float tail;
   if (parseNumber(json, "\"tail\"", tail)) {
