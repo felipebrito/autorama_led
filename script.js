@@ -183,23 +183,27 @@ class LEDRace {
         this.serialSendInterval = null;
         if (this.connectBtn) {
             this.connectBtn.addEventListener('click', async () => {
+                console.log('[UI] connectBtn clicked');
                 try {
                     // fecha conexão anterior, se houver
                     try { this.closeSerial?.(); } catch (_) {}
                     this.port = await navigator.serial.requestPort();
                     const info = this.port.getInfo ? this.port.getInfo() : {};
-                    console.info('Selected port info:', info);
+                    console.log('[SERIAL] requestPort resolved:', info);
                     await this.port.open({ baudRate: 115200 });
+                    console.log('[SERIAL] port opened @115200');
                     this.writer = this.port.writable.getWriter();
                     if (this.serialStatus) this.serialStatus.textContent = 'Conectado';
                     // Enviar configuração inicial
                     await this.sendConfigToArduino();
+                    console.log('[SERIAL] config sent');
                     // Iniciar leitura para debug/handshake
                     this.startSerialReadLoop();
                     // Iniciar envio periódico de estado
                     this.startSerialLoop();
+                    console.log('[SERIAL] state loop started');
                 } catch (e) {
-                    console.error('Serial connect error:', e?.name, e?.message || e);
+                    console.error('[ERROR] Serial connect error:', e?.name, e?.message || e);
                     if (this.serialStatus) this.serialStatus.textContent = 'Falha ao conectar';
                 }
             });
@@ -207,14 +211,16 @@ class LEDRace {
 
         if (this.listBtn) {
             this.listBtn.addEventListener('click', async () => {
+                console.log('[UI] listBtn clicked');
                 try {
                     const ports = await navigator.serial.getPorts();
                     const summary = ports.map((p, i) => {
                         try { return JSON.stringify(p.getInfo()); } catch { return 'port ' + i; }
                     }).join('\n');
-                    console.info('Authorized ports:', ports);
+                    console.log('[SERIAL] Authorized ports:', ports);
                     if (this.serialInfo) this.serialInfo.textContent = 'Portas autorizadas:\n' + (summary || 'nenhuma');
                 } catch (e) {
+                    console.error('[ERROR] list ports:', e);
                     if (this.serialInfo) this.serialInfo.textContent = 'Erro ao listar portas: ' + (e?.message || e);
                 }
             });
@@ -222,6 +228,7 @@ class LEDRace {
 
         if (this.disconnectBtn) {
             this.disconnectBtn.addEventListener('click', async () => {
+                console.log('[UI] disconnectBtn clicked');
                 this.closeSerial();
                 if (this.serialStatus) this.serialStatus.textContent = 'Desconectado';
                 if (this.serialInfo) this.serialInfo.textContent = 'Conexão encerrada pelo usuário';
