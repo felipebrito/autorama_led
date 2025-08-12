@@ -175,6 +175,8 @@ class LEDRace {
         }
         this.port = null;
         this.writer = null;
+        this.reader = null;
+        this.readBuffer = '';
         this.serialSendInterval = null;
         if (this.connectBtn) {
             this.connectBtn.addEventListener('click', async () => {
@@ -185,6 +187,8 @@ class LEDRace {
                     if (this.serialStatus) this.serialStatus.textContent = 'Conectado';
                     // Enviar configuração inicial
                     await this.sendConfigToArduino();
+                    // Iniciar leitura para debug/handshake
+                    this.startSerialReadLoop();
                     // Iniciar envio periódico de estado
                     this.startSerialLoop();
                 } catch (e) {
@@ -198,11 +202,16 @@ class LEDRace {
         if (!this.writer) return;
         const line = JSON.stringify(obj) + '\\n';
         const data = new TextEncoder().encode(line);
-        await this.writer.write(data);
+        try {
+            await this.writer.write(data);
+        } catch (err) {
+            console.error('Serial write error:', err);
+            if (this.serialStatus) this.serialStatus.textContent = 'Erro ao enviar';
+        }
     }
 
     async sendConfigToArduino() {
-        await this.sendLine({ type: 'config', maxLed: this.MAXLED, loopMax: this.loop_max, acel: this.ACEL, kf: this.kf, kg: this.kg });
+        await this.sendLine({ type: 'config', maxLed: this.MAXLED, loopMax: this.loop_max, acel: this.ACEL, kf: this.kf, kg: this.kg, tail: this.tailLength });
     }
 
     startSerialLoop() {
@@ -218,7 +227,49 @@ class LEDRace {
                 loop2: this.loop2,
                 leader: this.leader
             });
-        }, 50);
+        }, 100);
+    }
+
+    startSerialReadLoop() {
+        if (!this.port?.readable) return;
+        this.reader = this.port.readable.getReader();
+        const processChunk = (text) => {
+            this.readBuffer += text;
+            let idx;
+            while ((idx = this.readBuffer.indexOf('\n')) >= 0) {
+                const line = this.readBuffer.slice(0, idx).trim();
+                this.readBuffer = this.readBuffer.slice(idx + 1);
+                if (line) {
+                    // Log básico e handshake
+                    try {
+                        const msg = JSON.parse(line);
+                        if (msg.arduino === 'ready' && this.serialStatus) {
+                            this.serialStatus.textContent = 'Arduino pronto';
+                        }
+                    } catch (_) {
+                        // não JSON
+                    }
+                    console.debug('SERIAL RX:', line);
+                }
+            }
+        };
+        const pump = async () => {
+            try {
+                while (true) {
+                    const { value, done } = await this.reader.read();
+                    if (done) break;
+                    if (value) {
+                        const text = new TextDecoder().decode(value);
+                        processChunk(text);
+                    }
+                }
+            } catch (err) {
+                console.warn('Serial read loop ended:', err);
+            } finally {
+                try { this.reader.releaseLock(); } catch (_) {}
+            }
+        };
+        pump();
     }
     
     setupEventListeners() {
