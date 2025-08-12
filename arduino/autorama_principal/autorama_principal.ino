@@ -1,5 +1,6 @@
 /*
- * Arduino Autorama - Versão com Testes via Serial Monitor
+ * Autorama Principal - Sketch Principal do Jogo
+ * Versão com Testes via Serial Monitor
  * Comandos de teste: demo, jogador1, jogador2, simular, ajuda
  * Animações presetadas para testar cada componente
  */
@@ -144,10 +145,10 @@ void processMessage(String message) {
     renderFrame();
   } else if (message.indexOf("\"type\":\"effect\"") >= 0) {
     Serial.println("Comando EFFECT detectado");
-    handleEffect();
+    handleEffect(message);
   } else if (message.indexOf("\"type\":\"ping\"") >= 0) {
     Serial.println("Comando PING detectado");
-    handlePing();
+    handlePing(message);
   } else {
     Serial.print("Comando não reconhecido: '");
     Serial.print(message);
@@ -439,7 +440,7 @@ void handleState(String message) {
   Serial.print(", running: "); Serial.println(gameRunning ? "true" : "false");
 }
 
-void handleEffect() {
+void handleEffect(String message) {
   Serial.println("Effect recebido via browser");
   // PADRÃO VISUAL: FLASH BRANCO RÁPIDO (effect recebido)
   for (int i = 0; i < NUM_LEDS; i++) {
@@ -456,7 +457,7 @@ void handleEffect() {
   strip.show();
 }
 
-void handlePing() {
+void handlePing(String message) {
   Serial.println("Ping recebido via browser");
   // PADRÃO VISUAL: PISCAR AZUL NO CENTRO (ping recebido)
   int center = NUM_LEDS / 2;
