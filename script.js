@@ -232,13 +232,44 @@ class LEDRace {
         if (this.testEffectBtn) {
             this.testEffectBtn.addEventListener('click', async () => {
                 console.log('[UI] testEffectBtn clicked');
-                // Envia um ping e um efeito de teste
-                await this.sendLine({ type: 'ping' });
-                await this.sendLine({ type: 'effect', name: 'flash' });
-                // Se corrida não estiver ativa, envia um frame de state com running=1 e dist aleatória
-                if (!this.gameRunning) {
-                    const d = Math.floor(Math.random() * this.MAXLED);
-                    await this.sendLine({ type: 'state', dist1: d, dist2: (d + Math.floor(this.MAXLED/2)) % this.MAXLED, speed1: 0, speed2: 0, loop1: 0, loop2: 0, leader: 0, running: 1 });
+                
+                if (!this.writer) {
+                    console.warn('[UI] Arduino não conectado!');
+                    alert('Conecte o Arduino primeiro!');
+                    return;
+                }
+                
+                try {
+                    // Envia um ping e um efeito de teste
+                    console.log('[UI] Enviando ping...');
+                    await this.sendLine({ type: 'ping' });
+                    await this.sleep(200);
+                    
+                    console.log('[UI] Enviando effect...');
+                    await this.sendLine({ type: 'effect', name: 'flash' });
+                    await this.sleep(200);
+                    
+                    // Se corrida não estiver ativa, envia um frame de state com running=1 e dist aleatória
+                    if (!this.gameRunning) {
+                        console.log('[UI] Enviando state de teste...');
+                        const d = Math.floor(Math.random() * this.MAXLED);
+                        await this.sendLine({ 
+                            type: 'state', 
+                            dist1: d, 
+                            dist2: (d + Math.floor(this.MAXLED/2)) % this.MAXLED, 
+                            speed1: 0, 
+                            speed2: 0, 
+                            loop1: 0, 
+                            loop2: 0, 
+                            leader: 0, 
+                            running: 1 
+                        });
+                    }
+                    
+                    console.log('[UI] Teste concluído!');
+                } catch (error) {
+                    console.error('[UI] Erro no teste:', error);
+                    alert('Erro ao testar LEDs: ' + error.message);
                 }
             });
         }
@@ -305,6 +336,8 @@ class LEDRace {
                 console.log('[SERIAL TX] Estado enviado:', JSON.stringify(obj));
             } else if (obj.type === 'config') {
                 console.log('[SERIAL TX] Config enviada:', JSON.stringify(obj));
+            } else if (obj.type === 'ping' || obj.type === 'effect') {
+                console.log('[SERIAL TX] Comando de teste enviado:', JSON.stringify(obj));
             }
         } catch (err) {
             console.error('Serial write error:', err);
