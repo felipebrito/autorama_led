@@ -332,7 +332,7 @@ class LEDRace {
         
         await this.sendConfigToArduino();
         console.log('[SERIAL] config sent');
-        this.startSerialReadLoop();
+        // this.startSerialReadLoop(); // TEMPORARIAMENTE DESABILITADO PARA TESTE
         // this.startSerialLoop(); // TEMPORARIAMENTE DESABILITADO PARA TESTE
         console.log('[SERIAL] state loop started');
     }
