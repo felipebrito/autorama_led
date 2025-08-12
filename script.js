@@ -49,6 +49,9 @@ class LEDRace {
         this.resetBtn = document.getElementById('resetBtn');
         this.connectBtn = document.getElementById('connectBtn');
         this.serialStatus = document.getElementById('serialStatus');
+        this.serialInfo = document.getElementById('serialInfo');
+        this.listBtn = document.getElementById('listBtn');
+        this.disconnectBtn = document.getElementById('disconnectBtn');
         
         this.init();
     }
@@ -199,6 +202,29 @@ class LEDRace {
                     console.error('Serial connect error:', e?.name, e?.message || e);
                     if (this.serialStatus) this.serialStatus.textContent = 'Falha ao conectar';
                 }
+            });
+        }
+
+        if (this.listBtn) {
+            this.listBtn.addEventListener('click', async () => {
+                try {
+                    const ports = await navigator.serial.getPorts();
+                    const summary = ports.map((p, i) => {
+                        try { return JSON.stringify(p.getInfo()); } catch { return 'port ' + i; }
+                    }).join('\n');
+                    console.info('Authorized ports:', ports);
+                    if (this.serialInfo) this.serialInfo.textContent = 'Portas autorizadas:\n' + (summary || 'nenhuma');
+                } catch (e) {
+                    if (this.serialInfo) this.serialInfo.textContent = 'Erro ao listar portas: ' + (e?.message || e);
+                }
+            });
+        }
+
+        if (this.disconnectBtn) {
+            this.disconnectBtn.addEventListener('click', async () => {
+                this.closeSerial();
+                if (this.serialStatus) this.serialStatus.textContent = 'Desconectado';
+                if (this.serialInfo) this.serialInfo.textContent = 'Conexão encerrada pelo usuário';
             });
         }
     }
