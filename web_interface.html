@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏁 OLR ESP32 - Interface Moderna</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .neo-brutalism { 
+            box-shadow: 4px 4px 0px 0px #000;
+            border: 2px solid #000;
+        }
+        .neo-brutalism:hover { 
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px 0px #000;
+        }
+        .neo-brutalism:active { 
+            transform: translate(0px, 0px);
+            box-shadow: 2px 2px 0px 0px #000;
+        }
+        .car-row { 
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .car-row:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-100 to-slate-200 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-6xl font-black text-slate-800 mb-4">🏁 OLR ESP32</h1>
+            <p class="text-xl text-slate-600 font-medium">Interface Moderna de Controle</p>
+        </div>
+
+        <!-- Status da Conexão -->
+        <div class="bg-white neo-brutalism p-6 mb-8 max-w-md mx-auto">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div id="connection-status" class="w-4 h-4 rounded-full bg-red-500"></div>
+                    <span id="connection-text" class="font-semibold text-slate-700">Desconectado</span>
+                </div>
+                <button id="connect-btn" class="bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold neo-brutalism">
+                    🔌 Conectar
+                </button>
+            </div>
+        </div>
+
+        <!-- Configurações de Velocidade -->
+        <div class="bg-white neo-brutalism p-8 mb-8">
+            <h2 class="text-3xl font-bold text-slate-800 mb-6 flex items-center">
+                ⚡ Configurações de Velocidade
+            </h2>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Aceleração -->
+                <div class="space-y-4">
+                    <label class="block text-lg font-semibold text-slate-700">🚀 Aceleração</label>
+                    <input type="range" id="accel-slider" min="1" max="50" value="5" 
+                           class="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-slate-500">0.01</span>
+                        <span id="accel-value" class="text-2xl font-bold text-blue-600">0.05</span>
+                        <span class="text-sm text-slate-500">0.50</span>
+                    </div>
+                </div>
+
+                <!-- Velocidade Máxima -->
+                <div class="space-y-4">
+                    <label class="block text-lg font-semibold text-slate-700">🚀 Velocidade Máxima</label>
+                    <input type="range" id="max-slider" min="5" max="100" value="20" 
+                           class="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-slate-500">0.5</span>
+                        <span id="max-value" class="text-2xl font-bold text-green-600">2.0</span>
+                        <span class="text-sm text-slate-500">10.0</span>
+                    </div>
+                </div>
+
+                <!-- Velocidade Inicial -->
+                <div class="space-y-4">
+                    <label class="block text-lg font-semibold text-slate-700">🎯 Velocidade Inicial</label>
+                    <input type="range" id="init-slider" min="1" max="50" value="1" 
+                           class="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-slate-500">0.01</span>
+                        <span id="init-value" class="text-2xl font-bold text-purple-600">0.01</span>
+                        <span class="text-sm text-slate-500">0.50</span>
+                    </div>
+                </div>
+            </div>
+
+            <button id="apply-config" class="mt-8 bg-green-500 text-white px-8 py-4 rounded-xl font-bold text-xl neo-brutalism w-full">
+                ⚡ APLICAR CONFIGURAÇÕES
+            </button>
+        </div>
+
+        <!-- Controles do Jogo -->
+        <div class="bg-white neo-brutalism p-8 mb-8">
+            <h2 class="text-3xl font-bold text-slate-800 mb-6 flex items-center">
+                🎮 Controles do Jogo
+            </h2>
+            
+            <!-- Botões Principais -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <button id="go-btn" class="bg-green-500 text-white p-6 rounded-xl font-bold text-xl neo-brutalism">
+                    🏁 GO
+                </button>
+                <button id="reset-btn" class="bg-red-500 text-white p-6 rounded-xl font-bold text-xl neo-brutalism">
+                    🔄 RESET
+                </button>
+                <button id="test-btn" class="bg-purple-500 text-white p-6 rounded-xl font-bold text-xl neo-brutalism">
+                    🧪 TESTE
+                </button>
+                <button id="ramp-btn" class="bg-blue-500 text-white p-6 rounded-xl font-bold text-xl neo-brutalism">
+                    🏔️ RAMPA
+                </button>
+            </div>
+
+            <!-- Controles dos Carros -->
+            <div class="space-y-6">
+                <h3 class="text-2xl font-bold text-slate-700 flex items-center">
+                    🚗 Controles dos Carros
+                </h3>
+                
+                <!-- Acelerar -->
+                <div class="space-y-3">
+                    <label class="block text-lg font-semibold text-slate-600">⬆️ Acelerar</label>
+                    <div class="grid grid-cols-4 gap-3">
+                        <button id="car1-accel" class="bg-red-600 text-white p-4 rounded-lg font-bold neo-brutalism">
+                            Carro 1 
+                        </button>
+                        <button id="car2-accel" class="bg-green-600 text-white p-4 rounded-lg font-bold neo-brutalism">
+                            Carro 2 
+                        </button>
+                        <button id="car3-accel" class="bg-blue-600 text-white p-4 rounded-lg font-bold neo-brutalism">
+                            Carro 3 
+                        </button>
+                        <button id="car4-accel" class="bg-yellow-500 text-black p-4 rounded-lg font-bold neo-brutalism">
+                            Carro 4 
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Frear -->
+                <div class="space-y-3">
+                    <label class="block text-lg font-semibold text-slate-600">⬇️ Frear</label>
+                    <div class="grid grid-cols-4 gap-3">
+                        <button id="car1-brake" class="bg-red-700 text-white p-4 rounded-lg font-bold neo-brutalism">
+                            Carro 1 (Vermelho)
+                        </button>
+                        <button id="car2-brake" class="bg-green-700 text-white p-4 rounded-lg font-bold neo-brutalism">
+                            Carro 2 (Verde)
+                        </button>
+                        <button id="car3-brake" class="bg-blue-700 text-white p-4 rounded-lg font-bold neo-brutalism">
+                            Carro 3 (Azul)
+                        </button>
+                        <button id="car4-brake" class="bg-yellow-600 text-black p-4 rounded-lg font-bold neo-brutalism">
+                            Carro 4 (Amarelo)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visualização da Pista -->
+        <div class="bg-white neo-brutalism p-8 mb-8">
+            <h2 class="text-3xl font-bold text-slate-800 mb-6 flex items-center">
+                🏁 Visualização da Pista
+            </h2>
+            
+            <div class="bg-slate-100 rounded-xl p-6 mb-4">
+                <div class="text-center mb-6">
+                    <span class="text-slate-700 font-bold text-lg">🏁 LINHA DE CHEGADA</span>
+                </div>
+                
+                <!-- Grid de carros em linhas separadas -->
+                <div id="track-display" class="space-y-4">
+                    <!-- Carro 1 - Linha 1 (VERMELHO - 0x00FF00 GRB) -->
+                    <div class="car-row bg-white rounded-lg p-4 border-2 border-slate-300">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 rounded-full bg-red-600 border-2 border-white flex items-center justify-center text-white font-bold">
+                                    1
+                                </div>
+                                <span class="font-semibold text-slate-700">Carro 1 (Vermelho - 0x00FF00 GRB)</span>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                <span class="text-sm text-slate-500">Posição:</span>
+                                <span id="car1-position" class="font-bold text-red-600">0</span>
+                                <span class="text-sm text-slate-500">/ 200</span>
+                            </div>
+                        </div>
+                        <div class="mt-3 relative">
+                            <div class="w-full h-4 bg-slate-200 rounded-full overflow-hidden">
+                                <div id="car1-progress" class="h-full bg-red-600 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Carro 2 - Linha 2 (VERDE - 0xFF0000 GRB) -->
+                    <div class="car-row bg-white rounded-lg p-4 border-2 border-slate-300">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 rounded-full bg-green-600 border-2 border-white flex items-center justify-center text-white font-bold">
+                                    2
+                                </div>
+                                <span class="font-semibold text-slate-700">Carro 2 (Verde - 0xFF0000 GRB)</span>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                <span class="text-sm text-slate-500">Posição:</span>
+                                <span id="car2-position" class="font-bold text-green-600">0</span>
+                                <span class="text-sm text-slate-500">/ 200</span>
+                            </div>
+                        </div>
+                        <div class="mt-3 relative">
+                            <div class="w-full h-4 bg-slate-200 rounded-full overflow-hidden">
+                                <div id="car2-progress" class="h-full bg-green-600 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Carro 3 - Linha 3 (AZUL - 0x0000FF GRB) -->
+                    <div class="car-row bg-white rounded-lg p-4 border-2 border-slate-300">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 rounded-full bg-blue-600 border-2 border-white flex items-center justify-center text-white font-bold">
+                                    3
+                                </div>
+                                <span class="font-semibold text-slate-700">Carro 3 (Azul - 0x0000FF GRB)</span>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                <span class="text-sm text-slate-500">Posição:</span>
+                                <span id="car3-position" class="font-bold text-blue-600">0</span>
+                                <span class="text-sm text-slate-500">/ 200</span>
+                            </div>
+                        </div>
+                        <div class="mt-3 relative">
+                            <div class="w-full h-4 bg-slate-200 rounded-full overflow-hidden">
+                                <div id="car3-progress" class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Carro 4 - Linha 4 (AMARELO - 0x00FFFF GRB) -->
+                    <div class="car-row bg-white rounded-lg p-4 border-2 border-slate-300">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 rounded-full bg-yellow-500 border-2 border-white flex items-center justify-center text-black font-bold">
+                                    4
+                                </div>
+                                <span class="font-semibold text-slate-700">Carro 4 (Amarelo - 0x00FFFF GRB)</span>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                <span class="text-sm text-slate-500">Posição:</span>
+                                <span id="car4-position" class="font-bold text-yellow-600">0</span>
+                                <span class="text-sm text-slate-500">/ 200</span>
+                            </div>
+                        </div>
+                        <div class="mt-3 relative">
+                            <div class="w-full h-4 bg-slate-200 rounded-full overflow-hidden">
+                                <div id="car4-progress" class="h-full bg-yellow-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 text-center">
+                    <button id="update-track" class="bg-indigo-500 text-white px-6 py-3 rounded-lg font-semibold neo-brutalism">
+                        🔄 Atualizar Pista
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scores e Tempos -->
+        <div class="bg-white neo-brutalism p-8 mb-8">
+            <h2 class="text-3xl font-bold text-slate-800 mb-6 flex items-center">
+                🏆 Scores e Tempos
+            </h2>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b-2 border-slate-300">
+                            <th class="pb-3 font-bold text-slate-700">Carro</th>
+                            <th class="pb-3 font-bold text-slate-700">Volta Atual</th>
+                            <th class="pb-3 font-bold text-slate-700">Posição</th>
+                            <th class="pb-3 font-bold text-slate-700">Bateria</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scores-table">
+                        <!-- Scores serão preenchidos dinamicamente -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-6 text-center">
+                <button id="update-scores" class="bg-teal-500 text-white px-6 py-3 rounded-lg font-semibold neo-brutalism">
+                    📊 Atualizar Scores
+                </button>
+            </div>
+        </div>
+
+        <!-- Log de Comandos -->
+        <div class="bg-white neo-brutalism p-8">
+            <h2 class="text-3xl font-bold text-slate-800 mb-6 flex items-center">
+                📝 Log de Comandos
+            </h2>
+            
+            <div id="log-container" class="bg-slate-900 text-green-400 p-4 rounded-lg h-64 overflow-y-auto font-mono text-sm">
+                <!-- Log será preenchido dinamicamente -->
+            </div>
+            
+            <div class="mt-4 text-center">
+                <button id="clear-log" class="bg-slate-600 text-white px-6 py-3 rounded-lg font-semibold neo-brutalism">
+                    🗑️ Limpar Log
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração da interface
+        class OLRInterface {
+            constructor() {
+                this.connected = false;
+                this.serialPort = null;
+                this.reader = null;
+                this.writer = null;
+                this.lastTelemetryData = null;
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.updateScoresTable();
+                this.log('🚀 Interface OLR ESP32 iniciada');
+            }
+
+            setupEventListeners() {
+                // Sliders
+                document.getElementById('accel-slider').addEventListener('input', (e) => {
+                    const value = (e.target.value / 100).toFixed(2);
+                    document.getElementById('accel-value').textContent = value;
+                });
+
+                document.getElementById('max-slider').addEventListener('input', (e) => {
+                    const value = (e.target.value / 10).toFixed(1);
+                    document.getElementById('max-value').textContent = value;
+                });
+
+                document.getElementById('init-slider').addEventListener('input', (e) => {
+                    const value = (e.target.value / 100).toFixed(2);
+                    document.getElementById('init-value').textContent = value;
+                });
+
+                // Botões de controle
+                document.getElementById('connect-btn').addEventListener('click', () => this.connect());
+                document.getElementById('apply-config').addEventListener('click', () => this.applyConfig());
+                document.getElementById('go-btn').addEventListener('click', () => this.sendCommand('g'));
+                document.getElementById('reset-btn').addEventListener('click', () => this.sendCommand('r'));
+                document.getElementById('test-btn').addEventListener('click', () => this.sendCommand('t'));
+                document.getElementById('ramp-btn').addEventListener('click', () => this.sendCommand('1'));
+                
+                // Controles dos carros
+                document.getElementById('car1-accel').addEventListener('click', () => this.sendCommand('a'));
+                document.getElementById('car2-accel').addEventListener('click', () => this.sendCommand('2'));
+                document.getElementById('car3-accel').addEventListener('click', () => this.sendCommand('d'));
+                document.getElementById('car4-accel').addEventListener('click', () => this.sendCommand('f'));
+                
+                document.getElementById('car1-brake').addEventListener('click', () => this.sendCommand('l'));
+                document.getElementById('car2-brake').addEventListener('click', () => this.sendCommand('z'));
+                document.getElementById('car3-brake').addEventListener('click', () => this.sendCommand('c'));
+                document.getElementById('car4-brake').addEventListener('click', () => this.sendCommand('b'));
+                
+                // Outros botões
+                document.getElementById('update-track').addEventListener('click', () => this.updateTrack());
+                document.getElementById('update-scores').addEventListener('click', () => this.updateScores());
+                document.getElementById('clear-log').addEventListener('click', () => this.clearLog());
+            }
+
+            async connect() {
+                try {
+                    this.log('🔌 Tentando conectar...');
+                    
+                    // Testar conexão com o servidor Python
+                    const response = await fetch('http://localhost:8000/api/test', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ command: 'test' })
+                    });
+                    
+                    if (response.ok) {
+                        this.connected = true;
+                        this.updateConnectionStatus();
+                        this.log('✅ Conectado com sucesso ao servidor Python!');
+                        
+                        // Iniciar monitoramento
+                        this.startMonitoring();
+                    } else {
+                        throw new Error('Servidor não respondeu');
+                    }
+                    
+                } catch (error) {
+                    this.log(`❌ Erro na conexão: ${error}`);
+                    this.log('💡 Certifique-se de que o servidor Python está rodando');
+                }
+            }
+
+            updateConnectionStatus() {
+                const status = document.getElementById('connection-status');
+                const text = document.getElementById('connection-text');
+                const btn = document.getElementById('connect-btn');
+                
+                if (this.connected) {
+                    status.className = 'w-4 h-4 rounded-full bg-green-500';
+                    text.textContent = 'Conectado';
+                    btn.textContent = '🔌 Desconectar';
+                    btn.className = 'bg-red-500 text-white px-4 py-2 rounded-lg font-semibold neo-brutalism';
+                } else {
+                    status.className = 'w-4 h-4 rounded-full bg-red-500';
+                    text.textContent = 'Desconectado';
+                    btn.textContent = '🔌 Conectar';
+                    btn.className = 'bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold neo-brutalism';
+                }
+            }
+
+            async sendCommand(command) {
+                if (!this.connected) {
+                    this.log('❌ Não conectado!');
+                    return;
+                }
+
+                this.log(`📤 Enviando comando: ${command}`);
+                
+                try {
+                    // Enviar comando via servidor Python
+                    const response = await fetch('http://localhost:8000/api/command', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ command: command })
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success) {
+                            this.log(`📡 ESP respondeu: ${result.response}`);
+                            
+                            // Processar telemetria se recebida
+                            if (result.response.includes('p1T') || result.response.includes('p2T') || 
+                                result.response.includes('p3T') || result.response.includes('p4T')) {
+                                this.processTelemetry(result.response);
+                            }
+                        } else {
+                            this.log(`❌ Erro: ${result.error}`);
+                        }
+                    } else {
+                        this.log(`❌ Erro na comunicação com o servidor`);
+                    }
+                } catch (error) {
+                    this.log(`❌ Erro ao enviar comando: ${error}`);
+                }
+            }
+
+            applyConfig() {
+                const accel = document.getElementById('accel-slider').value;
+                const max = document.getElementById('max-slider').value;
+                const init = document.getElementById('init-slider').value;
+                
+                this.log(`⚡ Aplicando configurações: A=${accel/100}, M=${max/10}, I=${init/100}`);
+                
+                // Enviar comandos para ESP
+                this.sendCommand(`a${accel}`);
+                this.sendCommand(`m${max}`);
+                this.sendCommand(`i${init}`);
+            }
+
+            updateScoresTable() {
+                const tbody = document.getElementById('scores-table');
+                const carColors = ['#dc2626', '#10b981', '#3b82f6', '#eab308']; // Vermelho (0xFF0000), Verde (0x00FF00), Azul (0x0000FF), Amarelo (0xFFFF00)
+                const carNames = ['Carro 1 (Vermelho)', 'Carro 2 (Verde)', 'Carro 3 (Azul)', 'Carro 4 (Amarelo)'];
+                
+                tbody.innerHTML = '';
+                
+                for (let i = 0; i < 4; i++) {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b border-slate-200';
+                    
+                    row.innerHTML = `
+                        <td class="py-3 font-semibold" style="color: ${carColors[i]}">${carNames[i]}</td>
+                        <td class="py-3" id="lap-${i}">0</td>
+                        <td class="py-3" id="pos-${i}">0</td>
+                        <td class="py-3" id="battery-${i}">100</td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                }
+            }
+
+            updateTrack() {
+                this.log('🏁 Atualizando visualização da pista...');
+                // Solicitar telemetria atual da ESP
+                this.sendCommand('s');
+            }
+
+            updateScores() {
+                this.log('📊 Atualizando scores...');
+                
+                // Simular dados atualizados
+                for (let i = 0; i < 4; i++) {
+                    document.getElementById(`lap-${i}`).textContent = Math.floor(Math.random() * 5) + 1;
+                    document.getElementById(`pos-${i}`).textContent = Math.floor(Math.random() * 200);
+                    document.getElementById(`battery-${i}`).textContent = Math.floor(Math.random() * 40) + 60;
+                }
+                
+                this.log('✅ Scores atualizados');
+            }
+
+            startMonitoring() {
+                // Atualizar pista a cada 200ms para melhor performance
+                setInterval(() => {
+                    if (this.connected) {
+                        this.updateTrackRealTime();
+                    }
+                }, 200);
+                
+                // Atualizar scores a cada 2 segundos para reduzir carga
+                setInterval(() => {
+                    if (this.connected) {
+                        this.updateScores();
+                    }
+                }, 2000);
+            }
+            
+            updateTrackRealTime() {
+                // Atualizar posições dos carros em tempo real
+                // Esta função será chamada frequentemente para manter a pista atualizada
+                if (this.lastTelemetryData) {
+                    this.processTelemetry(this.lastTelemetryData);
+                }
+            }
+
+            log(message) {
+                const container = document.getElementById('log-container');
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = document.createElement('div');
+                logEntry.textContent = `[${timestamp}] ${message}`;
+                container.appendChild(logEntry);
+                container.scrollTop = container.scrollHeight;
+            }
+
+            processTelemetry(telemetryData) {
+                // Armazenar dados mais recentes para atualização em tempo real
+                this.lastTelemetryData = telemetryData;
+                
+                // Processar telemetria no formato OLR-Arduino: p1T1,50,100
+                const lines = telemetryData.split('\n');
+                
+                for (const line of lines) {
+                    if (line.startsWith('p') && line.includes('T')) {
+                        const match = line.match(/p(\d)T(\d+),(\d+),(\d+)/);
+                        if (match) {
+                            const carIndex = parseInt(match[1]) - 1; // 0-based
+                            const lap = parseInt(match[2]);
+                            const position = parseInt(match[3]);
+                            const battery = parseInt(match[4]);
+                            
+                            // Atualizar scores
+                            if (carIndex >= 0 && carIndex < 4) {
+                                document.getElementById(`lap-${carIndex}`).textContent = lap;
+                                document.getElementById(`pos-${carIndex}`).textContent = position;
+                                document.getElementById(`battery-${carIndex}`).textContent = battery;
+                                
+                                // Atualizar posição na pista
+                                this.updateCarPosition(carIndex, position);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            updateCarPosition(carIndex, position) {
+                // Atualizar posição numérica
+                const positionElement = document.getElementById(`car${carIndex + 1}-position`);
+                if (positionElement) {
+                    positionElement.textContent = position;
+                }
+                
+                // Atualizar barra de progresso
+                const progressElement = document.getElementById(`car${carIndex + 1}-progress`);
+                if (progressElement) {
+                    const percentage = (position / 200) * 100;
+                    progressElement.style.width = `${percentage}%`;
+                }
+            }
+            
+            clearLog() {
+                document.getElementById('log-container').innerHTML = '';
+                this.log('🗑️ Log limpo');
+            }
+        }
+
+        // Inicializar interface quando a página carregar
+        document.addEventListener('DOMContentLoaded', () => {
+            new OLRInterface();
+        });
+    </script>
+</body>
+</html>
