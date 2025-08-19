@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏁 Autorama LED Race Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .neo-brutalism { 
+            box-shadow: 4px 4px 0px #000000;
+            border: 2px solid #000000;
+        }
+        .neo-brutalism:hover { 
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px #000000;
+        }
+        .car-progress {
+            background: linear-gradient(90deg, #e5e7eb 0%, #d1d5db 100%);
+            border: 2px solid #000000;
+        }
+        .car-position {
+            transition: left 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white border-b-4 border-black shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center text-white font-bold text-xl neo-brutalism">
+                        🏁
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-slate-800">Autorama LED Race</h1>
+                        <p class="text-slate-600">Jogo de Corrida para 4 Jogadores</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="connectBtn" class="px-6 py-3 bg-green-600 text-white font-bold rounded-lg neo-brutalism hover:bg-green-700">
+                        🔌 Conectar ESP32
+                    </button>
+                    <div id="statusIndicator" class="w-4 h-4 bg-gray-400 rounded-full"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+        <!-- Game Controls -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <!-- Car Controls -->
+            <div class="space-y-4">
+                <h2 class="text-2xl font-bold text-slate-800 mb-4">🎮 Controles dos Carros</h2>
+                
+                <!-- Carro 1 - Linha 1 (VERMELHO - 0x00FF00 GRB) -->
+                <div class="car-row bg-white rounded-lg p-4 border-2 border-slate-300">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-full bg-red-600 border-2 border-white flex items-center justify-center text-white font-bold">
+                                1
+                            </div>
+                            <span class="font-semibold text-slate-700">Carro 1 (Vermelho - 0x00FF00 GRB)</span>
+                        </div>
+                        <div class="text-sm text-slate-500">Pos: <span id="car1-position">0</span></div>
+                    </div>
+                    <div class="mt-3 flex space-x-2">
+                        <button onclick="sendCommand('a')" class="flex-1 py-2 bg-red-600 text-white font-bold rounded neo-brutalism hover:bg-red-700">
+                            🚗 ACELERAR
+                        </button>
+                        <button onclick="sendCommand('1')" class="px-4 py-2 bg-red-500 text-white font-bold rounded neo-brutalism hover:bg-red-600">
+                            ⚡
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Carro 2 - Linha 2 (VERDE - 0xFF0000 GRB) -->
+                <div class="car-row bg-white rounded-lg p-4 border-2 border-slate-300">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-full bg-green-600 border-2 border-white flex items-center justify-center text-white font-bold">
+                                2
+                            </div>
+                            <span class="font-semibold text-slate-700">Carro 2 (Verde - 0xFF0000 GRB)</span>
+                        </div>
+                        <div class="text-sm text-slate-500">Pos: <span id="car2-position">0</span></div>
+                    </div>
+                    <div class="mt-3 flex space-x-2">
+                        <button onclick="sendCommand('2')" class="flex-1 py-2 bg-green-600 text-white font-bold rounded neo-brutalism hover:bg-green-700">
+                            🚗 ACELERAR
+                        </button>
+                        <button onclick="sendCommand('2')" class="px-4 py-2 bg-green-500 text-white font-bold rounded neo-brutalism hover:bg-green-600">
+                            ⚡
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Carro 3 - Linha 3 (AZUL - 0x0000FF GRB) -->
+                <div class="car-row bg-white rounded-lg p-4 border-2 border-slate-300">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-full bg-blue-600 border-2 border-white flex items-center justify-center text-white font-bold">
+                                3
+                            </div>
+                            <span class="font-semibold text-slate-700">Carro 3 (Azul - 0x0000FF GRB)</span>
+                        </div>
+                        <div class="text-sm text-slate-500">Pos: <span id="car3-position">0</span></div>
+                    </div>
+                    <div class="mt-3 flex space-x-2">
+                        <button onclick="sendCommand('d')" class="flex-1 py-2 bg-blue-600 text-white font-bold rounded neo-brutalism hover:bg-blue-700">
+                            🚗 ACELERAR
+                        </button>
+                        <button onclick="sendCommand('d')" class="px-4 py-2 bg-blue-500 text-white font-bold rounded neo-brutalism hover:bg-blue-600">
+                            ⚡
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Carro 4 - Linha 4 (AMARELO - 0xFFFF00 GRB) -->
+                <div class="car-row bg-white rounded-lg p-4 border-2 border-slate-300">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-full bg-yellow-500 border-2 border-white flex items-center justify-center text-white font-bold">
+                                4
+                            </div>
+                            <span class="font-semibold text-slate-700">Carro 4 (Amarelo - 0xFFFF00 GRB)</span>
+                        </div>
+                        <div class="text-sm text-slate-500">Pos: <span id="car4-position">0</span></div>
+                    </div>
+                    <div class="mt-3 flex space-x-2">
+                        <button onclick="sendCommand('f')" class="flex-1 py-2 bg-yellow-500 text-white font-bold rounded neo-brutalism hover:bg-yellow-600">
+                            🚗 ACELERAR
+                        </button>
+                        <button onclick="sendCommand('f')" class="px-4 py-2 bg-yellow-400 text-white font-bold rounded neo-brutalism hover:bg-yellow-500">
+                            ⚡
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Controls -->
+            <div class="space-y-4">
+                <h2 class="text-2xl font-bold text-slate-800 mb-4">🎮 Controles do Jogo</h2>
+                
+                <div class="bg-white rounded-lg p-6 border-2 border-slate-300">
+                    <div class="space-y-4">
+                        <button onclick="sendCommand('g')" class="w-full py-4 bg-green-600 text-white font-bold text-xl rounded-lg neo-brutalism hover:bg-green-700">
+                            🏁 GO - INICIAR CORRIDA
+                        </button>
+                        
+                        <button onclick="sendCommand('r')" class="w-full py-4 bg-red-600 text-white font-bold text-xl rounded-lg neo-brutalism hover:bg-red-700">
+                            🔄 RESET
+                        </button>
+                        
+                        <button onclick="sendCommand('t')" class="w-full py-4 bg-blue-600 text-white font-bold text-xl rounded-lg neo-brutalism hover:bg-blue-700">
+                            🧪 TESTE
+                        </button>
+                        
+                        <button onclick="sendCommand('c')" class="w-full py-4 bg-gray-600 text-white font-bold text-xl rounded-lg neo-brutalism hover:bg-gray-700">
+                            🧹 CLEAR
+                        </button>
+                        
+                        <button onclick="sendCommand('v')" class="w-full py-4 bg-purple-600 text-white font-bold text-xl rounded-lg neo-brutalism hover:bg-purple-700">
+                            👀 VIEW
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration -->
+            <div class="space-y-4">
+                <h2 class="text-2xl font-bold text-slate-800 mb-4">⚙️ Configuração</h2>
+                
+                <div class="bg-white rounded-lg p-6 border-2 border-slate-300">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Taxa de Aceleração</label>
+                            <input type="range" id="accelRate" min="0.1" max="1.0" step="0.1" value="0.2" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                            <div class="text-center text-sm text-slate-600"><span id="accelValue">0.2</span></div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Velocidade Máxima</label>
+                            <input type="range" id="maxSpeed" min="3" max="10" step="0.5" value="5.0" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                            <div class="text-center text-sm text-slate-600"><span id="maxSpeedValue">5.0</span></div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Velocidade Inicial</label>
+                            <input type="range" id="initSpeed" min="0.1" max="2.0" step="0.1" value="0.5" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                            <div class="text-center text-sm text-slate-600"><span id="initSpeedValue">0.5</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Track Visualization -->
+        <div class="bg-white rounded-lg p-6 border-2 border-slate-300 mb-8">
+            <h2 class="text-2xl font-bold text-slate-800 mb-4">🏁 Visualização da Pista</h2>
+            
+            <div class="space-y-4">
+                <!-- Carro 1 -->
+                <div class="flex items-center space-x-4">
+                    <div class="w-8 h-8 rounded-full bg-red-600 border-2 border-white flex items-center justify-center text-white font-bold text-sm">1</div>
+                    <div class="flex-1">
+                        <div class="car-progress h-4 rounded-full relative overflow-hidden">
+                            <div id="car1-progress" class="car-position absolute top-0 left-0 w-4 h-4 bg-red-600 rounded-full border-2 border-white"></div>
+                        </div>
+                    </div>
+                    <div class="text-sm text-slate-600 w-20 text-right">0/200</div>
+                </div>
+
+                <!-- Carro 2 -->
+                <div class="flex items-center space-x-4">
+                    <div class="w-8 h-8 rounded-full bg-green-600 border-2 border-white flex items-center justify-center text-white font-bold text-sm">2</div>
+                    <div class="flex-1">
+                        <div class="car-progress h-4 rounded-full relative overflow-hidden">
+                            <div id="car2-progress" class="car-position absolute top-0 left-0 w-4 h-4 bg-green-600 rounded-full border-2 border-white"></div>
+                        </div>
+                    </div>
+                    <div class="text-sm text-slate-600 w-20 text-right">0/200</div>
+                </div>
+
+                <!-- Carro 3 -->
+                <div class="flex items-center space-x-4">
+                    <div class="w-8 h-8 rounded-full bg-blue-600 border-2 border-white flex items-center justify-center text-white font-bold text-sm">3</div>
+                    <div class="flex-1">
+                        <div class="car-progress h-4 rounded-full relative overflow-hidden">
+                            <div id="car3-progress" class="car-position absolute top-0 left-0 w-4 h-4 bg-blue-600 rounded-full border-2 border-white"></div>
+                        </div>
+                    </div>
+                    <div class="text-sm text-slate-600 w-20 text-right">0/200</div>
+                </div>
+
+                <!-- Carro 4 -->
+                <div class="flex items-center space-x-4">
+                    <div class="w-8 h-8 rounded-full bg-yellow-500 border-2 border-white flex items-center justify-center text-white font-bold text-sm">4</div>
+                    <div class="flex-1">
+                        <div class="car-progress h-4 rounded-full relative overflow-hidden">
+                            <div id="car4-progress" class="car-position absolute top-0 left-0 w-4 h-4 bg-yellow-500 rounded-full border-2 border-white"></div>
+                        </div>
+                    </div>
+                    <div class="text-sm text-slate-600 w-20 text-right">0/200</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scores & Telemetry -->
+        <div class="bg-white rounded-lg p-6 border-2 border-slate-300 mb-8">
+            <h2 class="text-2xl font-bold text-slate-800 mb-4">📊 Pontuação e Telemetria</h2>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b-2 border-slate-300">
+                            <th class="text-left py-2 px-4 font-semibold text-slate-700">Carro</th>
+                            <th class="text-left py-2 px-4 font-semibold text-slate-700">Posição</th>
+                            <th class="text-left py-2 px-4 font-semibold text-slate-700">Velocidade</th>
+                            <th class="text-left py-2 px-4 font-semibold text-slate-700">Voltas</th>
+                            <th class="text-left py-2 px-4 font-semibold text-slate-700">Tempo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scoresTable">
+                        <tr class="border-b border-slate-200">
+                            <td class="py-2 px-4">Carro 1 🔴</td>
+                            <td class="py-2 px-4">0</td>
+                            <td class="py-2 px-4">0.00</td>
+                            <td class="py-2 px-4">0/5</td>
+                            <td class="py-2 px-4">--:--</td>
+                        </tr>
+                        <tr class="border-b border-slate-200">
+                            <td class="py-2 px-4">Carro 2 🟢</td>
+                            <td class="py-2 px-4">0</td>
+                            <td class="py-2 px-4">0.00</td>
+                            <td class="py-2 px-4">0/5</td>
+                            <td class="py-2 px-4">--:--</td>
+                        </tr>
+                        <tr class="border-b border-slate-200">
+                            <td class="py-2 px-4">Carro 3 🔵</td>
+                            <td class="py-2 px-4">0</td>
+                            <td class="py-2 px-4">0.00</td>
+                            <td class="py-2 px-4">0/5</td>
+                            <td class="py-2 px-4">--:--</td>
+                        </tr>
+                        <tr class="border-b border-slate-200">
+                            <td class="py-2 px-4">Carro 4 🟡</td>
+                            <td class="py-2 px-4">0</td>
+                            <td class="py-2 px-4">0.00</td>
+                            <td class="py-2 px-4">0/5</td>
+                            <td class="py-2 px-4">--:--</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Command Log -->
+        <div class="bg-white rounded-lg p-6 border-2 border-slate-300">
+            <h2 class="text-2xl font-bold text-slate-800 mb-4">📝 Log de Comandos</h2>
+            
+            <div id="commandLog" class="bg-slate-100 rounded-lg p-4 h-32 overflow-y-auto font-mono text-sm">
+                <div class="text-slate-500">Aguardando comandos...</div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Configuração dos sliders
+        document.getElementById('accelRate').addEventListener('input', function() {
+            document.getElementById('accelValue').textContent = this.value;
+        });
+        
+        document.getElementById('maxSpeed').addEventListener('input', function() {
+            document.getElementById('maxSpeedValue').textContent = this.value;
+        });
+        
+        document.getElementById('initSpeed').addEventListener('input', function() {
+            document.getElementById('initSpeedValue').textContent = this.value;
+        });
+
+        // Função para enviar comandos
+        function sendCommand(command) {
+            const timestamp = new Date().toLocaleTimeString();
+            addToLog(`📤 ${timestamp} - Comando: ${command}`);
+            
+            // Enviar comando para o servidor Flask
+            fetch('/api/command', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ command: command })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    addToLog(`📥 ${new Date().toLocaleTimeString()} - Resposta: ${data.response}`);
+                    updateCarPosition(command);
+                    
+                    // Atualizar estado do jogo se recebido
+                    if (data.game_state) {
+                        updateGameState(data.game_state);
+                    }
+                } else {
+                    addToLog(`❌ ${new Date().toLocaleTimeString()} - Erro: ${data.error}`);
+                }
+            })
+            .catch(error => {
+                addToLog(`❌ ${new Date().toLocaleTimeString()} - Erro de conexão: ${error}`);
+            });
+        }
+
+        // Função para atualizar estado do jogo
+        function updateGameState(gameState) {
+            // Atualizar status do jogo
+            if (gameState.status === 'running') {
+                document.querySelector('h2').textContent = '🏁 CORRIDA EM ANDAMENTO!';
+            } else if (gameState.status === 'stopped') {
+                document.querySelector('h2').textContent = '⏸️ CORRIDA PARADA';
+            }
+            
+            // Atualizar posições dos carros
+            Object.keys(gameState.cars).forEach(carId => {
+                const car = gameState.cars[carId];
+                const positionSpan = document.getElementById(`car${carId}-position`);
+                const progressBar = document.getElementById(`car${carId}-progress`);
+                
+                if (positionSpan && progressBar) {
+                    positionSpan.textContent = car.position;
+                    const percentage = (car.position / 200) * 100;
+                    progressBar.style.left = `${percentage}%`;
+                }
+            });
+        }
+
+        // Função para adicionar ao log
+        function addToLog(message) {
+            const log = document.getElementById('commandLog');
+            const div = document.createElement('div');
+            div.textContent = message;
+            div.className = 'mb-1';
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // Função para atualizar posição dos carros
+        function updateCarPosition(command) {
+            let carId = 0;
+            let increment = 10;
+            
+            switch(command) {
+                case 'a': carId = 0; break;
+                case '2': carId = 1; break;
+                case 'd': carId = 2; break;
+                case 'f': carId = 3; break;
+                default: return;
+            }
+            
+            const progressBar = document.getElementById(`car${carId + 1}-progress`);
+            const positionSpan = document.getElementById(`car${carId + 1}-position`);
+            
+            if (progressBar && positionSpan) {
+                const currentPos = parseInt(positionSpan.textContent) || 0;
+                const newPos = Math.min(currentPos + increment, 200);
+                
+                positionSpan.textContent = newPos;
+                const percentage = (newPos / 200) * 100;
+                progressBar.style.left = `${percentage}%`;
+            }
+        }
+
+        // Função para conectar ESP32
+        document.getElementById('connectBtn').addEventListener('click', function() {
+            addToLog('🔌 Tentando conectar ao ESP32...');
+            this.textContent = '🔌 Conectando...';
+            this.disabled = true;
+            
+            // Primeiro, listar portas disponíveis
+            fetch('/api/ports')
+            .then(response => response.json())
+            .then(data => {
+                if (data.ports && data.ports.length > 0) {
+                    // Conectar à primeira porta disponível
+                    const port = data.ports[0].device;
+                    addToLog(`🔌 Conectando à porta: ${port}`);
+                    
+                    return fetch('/api/connect', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ port: port })
+                    });
+                } else {
+                    throw new Error('Nenhuma porta serial encontrada');
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.textContent = '🔌 Conectado!';
+                    this.className = 'px-6 py-3 bg-green-600 text-white font-bold rounded-lg neo-brutalism';
+                    document.getElementById('statusIndicator').className = 'w-4 h-4 bg-green-500 rounded-full';
+                    addToLog('✅ Conectado ao ESP32 com sucesso!');
+                } else {
+                    throw new Error(data.error || 'Falha na conexão');
+                }
+            })
+            .catch(error => {
+                addToLog(`❌ Erro na conexão: ${error.message}`);
+                this.textContent = '🔌 Conectar ESP32';
+                this.disabled = false;
+            });
+        });
+
+        // Atualizar posições em tempo real
+        setInterval(() => {
+            // Simular movimento dos carros
+            for (let i = 1; i <= 4; i++) {
+                const positionSpan = document.getElementById(`car${i}-position`);
+                if (positionSpan) {
+                    const currentPos = parseInt(positionSpan.textContent) || 0;
+                    if (currentPos > 0) {
+                        const newPos = Math.max(currentPos - 1, 0);
+                        positionSpan.textContent = newPos;
+                        
+                        const progressBar = document.getElementById(`car${i}-progress`);
+                        if (progressBar) {
+                            const percentage = (newPos / 200) * 100;
+                            progressBar.style.left = `${percentage}%`;
+                        }
+                    }
+                }
+            }
+        }, 100);
+    </script>
+</body>
+</html>
